@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"fmt"
+	"strings"
 	"masmaint/internal/core/logger"
 	"masmaint/internal/shared/dto"
 )
@@ -15,6 +16,15 @@ type DdlParseService struct {}
 func NewDdlParseService() *DdlParseService {
 	return &DdlParseService{}
 }
+
+
+func (serv *DdlParseService) Parse(path, dbtype string) []dto.Table {
+	ddl, _ := serv.readFile(path)
+	tokens := serv.LexicalAnalysis(ddl)
+	fmt.Println(tokens)
+	return []dto.Table{}
+}
+
 
 func (serv *DdlParseService) readFile(path string) (string, error) {
 	ret := ""
@@ -42,7 +52,17 @@ func (serv *DdlParseService) readFile(path string) (string, error) {
 	return ret, nil
 }
 
-func (serv *DdlParseService) Parse(path, dbtype string) []dto.Table {
-	fmt.Println(serv.readFile(path))
-	return []dto.Table{}, err
-}
+
+//字句解析
+func (serv *DdlParseService) LexicalAnalysis(ddl string) []string {
+	ddl = strings.ReplaceAll(ddl, "\n", "")
+	ddl = strings.ReplaceAll(ddl, "(", " ( ")
+	ddl = strings.ReplaceAll(ddl, ")", " ) ")
+	ddl = strings.ReplaceAll(ddl, ",", " , ")
+	ddl = strings.ReplaceAll(ddl, ";", " ; ")
+	ddl = strings.ReplaceAll(ddl, "'", " ' ")
+	ddl = strings.ReplaceAll(ddl, "\"", " \" ")
+	ddl = strings.ReplaceAll(ddl, " ` ", " ` ")
+
+	return strings.Split(ddl, " ")
+} 
