@@ -9,18 +9,18 @@ import (
 	"masmaint/pkg/utils"
 )
 
-type DdlParseService interface {
-	Parse(path, dbtype string) []dto.Table
+type CsvParseService interface {
+	Parse(path string) ([]dto.Table, error)
 }
 
 type rootController struct {
-	dpServ *service.DdlParseService
+	cpServ *service.CsvParseService
 }
 
 
 func newRootController() *rootController {
-	dpServ := service.NewDdlParseService()
-	return &rootController{dpServ}
+	cpServ := service.NewCsvParseService()
+	return &rootController{cpServ}
 }
 
 
@@ -34,8 +34,8 @@ func (ctr *rootController) indexPage(c *gin.Context) {
 func (ctr *rootController) postDdl(c *gin.Context) {
 	file, _ := c.FormFile("ddl")
 	randStr := utils.GenerateRandomString(10)
-	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".sql"
+	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".csv"
 	c.SaveUploadedFile(file, path)
-	ctr.dpServ.Parse(path, "")
+	ctr.cpServ.Parse(path)
 	c.HTML(200, "index.html", gin.H{})
 }
