@@ -3,8 +3,9 @@ package service
 import (
 	"io"
 	"os"
-	"fmt"
 	"strings"
+	"errors"
+
 	"masmaint/internal/core/logger"
 	"masmaint/internal/shared/dto"
 )
@@ -18,11 +19,11 @@ func NewDdlParseService() *DdlParseService {
 }
 
 
-func (serv *DdlParseService) Parse(path, dbtype string) []dto.Table {
+func (serv *DdlParseService) Parse(path, dbtype string) ([]dto.Table, error) {
 	ddl, _ := serv.readFile(path)
-	tokens := serv.LexicalAnalysis(ddl)
-	fmt.Println(tokens)
-	return []dto.Table{}
+	tokens := serv.lexicalAnalysis(ddl)
+	err := serv.validate(tokens, dbtype)
+	return []dto.Table{}, err
 }
 
 
@@ -31,7 +32,7 @@ func (serv *DdlParseService) readFile(path string) (string, error) {
 	file, err := os.Open(path)
 
 	if err != nil {
-		logger.LogError("ファイルオープン失敗:" + path)
+		logger.LogError("failed to open file:" + path)
 		return "", err
 	}
 	defer file.Close()
@@ -44,7 +45,7 @@ func (serv *DdlParseService) readFile(path string) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			logger.LogError("ファイルの読み込み失敗:" + path)
+			logger.LogError("failed to read file:" + path)
 			return "", err
 		}
 		ret += string(data[:n])
@@ -54,7 +55,7 @@ func (serv *DdlParseService) readFile(path string) (string, error) {
 
 
 //字句解析
-func (serv *DdlParseService) LexicalAnalysis(ddl string) []string {
+func (serv *DdlParseService) lexicalAnalysis(ddl string) []string {
 	ddl = strings.ReplaceAll(ddl, "\n", "")
 	ddl = strings.ReplaceAll(ddl, "(", " ( ")
 	ddl = strings.ReplaceAll(ddl, ")", " ) ")
@@ -66,3 +67,15 @@ func (serv *DdlParseService) LexicalAnalysis(ddl string) []string {
 
 	return strings.Split(ddl, " ")
 } 
+
+func (serv *DdlParseService) validate(tokens []string, dbtype string) error {
+	if (dbtype == "postgresql") {
+		return serv.validatePostgreSQL(tokens, dbtype)
+	} else {
+		return errors.New("not supported")
+	}
+}
+
+func (serv *DdlParseService) validatePostgreSQL(tokens []string, dbtype string) error {
+	return nil
+}
