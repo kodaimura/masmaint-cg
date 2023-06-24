@@ -10,7 +10,7 @@ import (
 )
 
 type CsvParseService interface {
-	Parse(path string) ([]dto.Table, error)
+	Parse(path string) ([]dto.Table, []string)
 }
 
 type rootController struct {
