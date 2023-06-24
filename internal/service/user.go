@@ -3,11 +3,11 @@ package service
 import (
 	"golang.org/x/crypto/bcrypt"
 
-	"masmaint/internal/core/jwt"
+	"masmaint-cg/internal/core/jwt"
 	
-	"masmaint/internal/core/logger"
-	"masmaint/internal/model/entity"
-	"masmaint/internal/model/dao"
+	"masmaint-cg/internal/core/logger"
+	"masmaint-cg/internal/model/entity"
+	"masmaint-cg/internal/model/dao"
 )
 
 

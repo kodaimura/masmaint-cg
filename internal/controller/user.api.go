@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"masmaint/config"
-	"masmaint/internal/core/jwt"
-	"masmaint/internal/service"
+	"masmaint-cg/config"
+	"masmaint-cg/internal/core/jwt"
+	"masmaint-cg/internal/service"
 )
 
 

@@ -4,9 +4,9 @@ import (
 	"time"
 	"github.com/gin-gonic/gin"
 
-	"masmaint/internal/service"
-	"masmaint/internal/shared/dto"
-	"masmaint/pkg/utils"
+	"masmaint-cg/internal/service"
+	"masmaint-cg/internal/shared/dto"
+	"masmaint-cg/pkg/utils"
 )
 
 type CsvParseService interface {

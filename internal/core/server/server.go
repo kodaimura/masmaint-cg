@@ -3,9 +3,9 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 
-	"masmaint/config"
-	"masmaint/internal/core/logger"
-	"masmaint/internal/controller"
+	"masmaint-cg/config"
+	"masmaint-cg/internal/core/logger"
+	"masmaint-cg/internal/controller"
 )
 
 func Run() {

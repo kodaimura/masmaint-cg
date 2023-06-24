@@ -1,4 +1,4 @@
-module masmaint
+module masmaint-cg
 
 go 1.18
 

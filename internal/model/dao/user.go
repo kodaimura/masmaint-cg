@@ -3,8 +3,8 @@ package dao
 import (
 	"database/sql"
 
-	"masmaint/internal/core/db"
-	"masmaint/internal/model/entity"
+	"masmaint-cg/internal/core/db"
+	"masmaint-cg/internal/model/entity"
 )
 
 

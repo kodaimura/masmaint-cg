@@ -6,8 +6,8 @@ import (
 	"strings"
 	"errors"
 
-	"masmaint/internal/core/logger"
-	"masmaint/internal/shared/dto"
+	"masmaint-cg/internal/core/logger"
+	"masmaint-cg/internal/shared/dto"
 )
 
 
