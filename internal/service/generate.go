@@ -13,7 +13,7 @@ import (
 )
 
 type SourceGenerator interface {
-	Generate() error
+	GenerateSource() error
 }
 
 
@@ -44,7 +44,7 @@ func (serv *GenerateService) Generate(tables *[]dto.Table, lang, rdbms string) (
 
 func (serv *GenerateService) generateSourcePath() string {
 	return "./tmp/masmaint-" + time.Now().Format("2006-01-02-15-04-05") + 
-		"-" + utils.RandomString(10) + "/masmaint"
+		"-" + utils.RandomString(10)
 }
 
 
@@ -52,10 +52,10 @@ func (serv *GenerateService) generateSource(tables *[]dto.Table, lang, rdbms, pa
 	var sg SourceGenerator
 
 	if lang == constant.GOLANG {
-		sg = generator.NewSourceGeneratorGolang(tables, rdbms, path)
+		sg = generator.NewSourceGeneratorGolang(tables, rdbms, path + "/masmaint/")
 	} else {
 		return errors.New("未対応言語");
 	}
 
-	return sg.Generate();
+	return sg.GenerateSource();
 }
