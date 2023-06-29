@@ -30,7 +30,7 @@ func ItoaSlice(sl []int) []string {
 }
 
 
-func GenerateRandomString(length int) string {
+func RandomString(length int) string {
 	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	rand.Seed(time.Now().UnixNano())
 
