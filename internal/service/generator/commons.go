@@ -3,6 +3,7 @@ package generator
 import (
 	"io"
 	"os"
+	"strings"
 	"path/filepath"
 
 	"masmaint-cg/internal/core/logger"
@@ -76,4 +77,24 @@ func CopyDir(source string, destination string) error {
 	}
 
 	return nil
+}
+
+//xxx -> Xxx / xxx_yyy -> XxxYyy
+func SnakeToPascal(snake string) string {
+	ls := strings.Split(strings.ToLower(snake), "_")
+	for i, s := range ls {
+		ls[i] = strings.ToUpper(s[0:1]) + s[1:]
+	}
+	return strings.Join(ls, "")
+}
+
+//xxx -> xxx / xxx_yyy -> xxxYyy
+func SnakeToCamel(snake string) string {
+	ls := strings.Split(strings.ToLower(snake), "_")
+	for i, s := range ls {
+		if i != 0 {
+			ls[i] = strings.ToUpper(s[0:1]) + s[1:]
+		}
+	}
+	return strings.Join(ls, "")
 }
