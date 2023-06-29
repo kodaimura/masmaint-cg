@@ -1,9 +1,9 @@
 package generator
 
 import (
-	"os"
+	//"os"
 
-	"masmaint-cg/internal/core/logger"
+	//"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
 )
 
@@ -21,17 +21,18 @@ func NewSourceGeneratorGolang(tables *[]dto.Table, rdbms, path string) *SourceGe
 }
 
 func (serv *SourceGeneratorGolang) GenerateSource() error {
+
 	if err := serv.generateSourceCmd(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateSourceConfig(); err != nil {
 		return err
 	}
-	if err := serv.generateSourceController(); err != nil {
+	if err := serv.generateSourceCore(); err != nil {
 		return err
 	}
-	if err := serv.generateSourceCore(); err != nil {
+	/*
+	if err := serv.generateSourceController(); err != nil {
 		return err
 	}
 	if err := serv.generateSourceDto(); err != nil {
@@ -51,19 +52,35 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 }
 
 func (serv *SourceGeneratorGolang) generateSourceCmd() error {
-	path := serv.path + "cmd/masmaint/"
-	if err := os.MkdirAll(path, 0777); err != nil {
+	source := "_originalcopy_/golang/cmd"
+	destination := serv.path + "cmd/"
+	
+	err := CopyDir(source, destination)
+	if err != nil {
 		logger.LogError(err.Error())
-		return err
 	}
+	return err
 
-	return serv.generateSourceCmdFile(path)
 }
 
-func (serv *SourceGeneratorGolang) generateSourceCmdFile(path string) error {
-	code := "package main\n\n" + 
-	"import (\n\t\"masmaint/core/server\"\n)\n\n" +
-	"func main() {\n\tserver.Run()\n}"
+func (serv *SourceGeneratorGolang) generateSourceConfig() error {
+	source := "_originalcopy_/golang/config"
+	destination := serv.path + "config/"
 
-	return WriteFile(path + "main.go", code)
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+func (serv *SourceGeneratorGolang) generateSourceCore() error {
+	source := "_originalcopy_/golang/core"
+	destination := serv.path + "core/"
+	
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
 }
