@@ -35,10 +35,10 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceController(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateSourceDto(); err != nil {
 		return err
 	}
+	/*
 	if err := serv.generateSourceModel(); err != nil {
 		return err
 	}
@@ -201,5 +201,41 @@ func (serv *SourceGeneratorGolang) generateSourceControllerFile(table *dto.Table
 		"\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, ret)\n}\n"
 
+	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDto() error {
+	path := serv.path + "dto/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceDtoFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDtoFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceDtoFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDtoFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	code := "package dto\n\n\n" + fmt.Sprintf("type %sDto struct {\n", tnp)
+
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		cnp := SnakeToPascal(cn)
+		code += fmt.Sprintf("\t%s any `json:\"%s\"`\n", cnp, cn)
+	}
+
+	code += "}"
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
