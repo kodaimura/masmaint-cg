@@ -98,3 +98,13 @@ func SnakeToCamel(snake string) string {
 	}
 	return strings.Join(ls, "")
 }
+
+//xxx -> x / xxx_yyy -> xy
+func GetSnakeInitial(snake string) string {
+	ls := strings.Split(strings.ToLower(snake), "_")
+	ret := ""
+	for _, s := range ls {
+		ret = s[0:1]
+	}
+	return ret
+}
