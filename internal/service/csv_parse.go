@@ -118,7 +118,7 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 			}
 		}
 		if serv.isValidColumnLabel(row[0]) {
-			if len(row) < 6 {
+			if len(row) < 7 {
 				errs = append(errs, fmt.Sprintf("%d行目: 要素数不足", i))
 				continue
 			}
@@ -135,7 +135,10 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 				errs = append(errs, fmt.Sprintf("%d行目: NotNull制約フラグ不正[%s]", i, row[4]))
 			}
 			if !serv.isValidFlg(row[5]) {
-				errs = append(errs, fmt.Sprintf("%d行目: 更新不可フラグ不正[%s]", i, row[5]))
+				errs = append(errs, fmt.Sprintf("%d行目: 自動採番フラグ不正[%s]", i, row[5]))
+			}
+			if !serv.isValidFlg(row[6]) {
+				errs = append(errs, fmt.Sprintf("%d行目: 更新不可フラグ不正[%s]", i, row[6]))
 			}
 		}
 	}
@@ -167,7 +170,8 @@ func (serv *CsvParseService) convertTables(records [][]string) []dto.Table {
 			c.ColumnType = strings.ToLower(row[2])
 			c.IsPrimaryKey = (row[3] == "1")
 			c.IsNotNull = (row[4] == "1")
-			c.IsReadOnly = (row[5] == "1")
+			c.IsAuto = (row[5] == "1")
+			c.IsReadOnly = (row[6] == "1")
 			columns = append(columns, c)
 		}
 	}

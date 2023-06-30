@@ -38,11 +38,11 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceDto(); err != nil {
 		return err
 	}
-	/*
-	if err := serv.generateSourceModel(); err != nil {
+	if err := serv.generateSourceService(); err != nil {
 		return err
 	}
-	if err := serv.generateSourceService(); err != nil {
+	/*
+	if err := serv.generateSourceModel(); err != nil {
 		return err
 	}
 	if err := serv.generateSourceWeb(); err != nil {
@@ -147,11 +147,10 @@ func (serv *SourceGeneratorGolang) generateSourceControllerFile(table *dto.Table
 	tni := GetSnakeInitial(tn)
 
 	code += fmt.Sprintf("type %sService interface {\n", tnp) + 
+		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
 		fmt.Sprintf("\tCreate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
 		fmt.Sprintf("\tUpdate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
 		fmt.Sprintf("\tDelete(%sDto *dto.%sDto) error\n", tni, tnp) +
-		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
-		fmt.Sprintf("\tGetOne(%sDto *dto.%sDto) ([]dto.%sDto, error)\n", tni, tnp, tnp) +
 		"}\n\n"
 
 	code += fmt.Sprintf("type %sController struct {\n", tnp) +
@@ -237,5 +236,162 @@ func (serv *SourceGeneratorGolang) generateSourceDtoFile(table *dto.Table, path 
 	}
 
 	code += "}"
+	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceService() error {
+	path := serv.path + "service/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceServiceFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceServiceFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceServiceFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, path string) error {
+	code := "package dto\n\nimport (\n" +
+		"\t\"errors\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
+		"\t\"masmaint/model/dao\"\n\t\"masmaint/dto\"\n)\n\n\n"
+
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	code += fmt.Sprintf("type %sDao interface {\n", tnp) + 
+		fmt.Sprintf("\tSelectAll() ([]entity.%s, error)\n", tnp) +
+		fmt.Sprintf("\tSelect(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tInsert(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tUpdate(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tDelete(%s *entity.%s) error\n", tni, tnp) +
+		"}\n\n"
+
+	code += fmt.Sprintf("type %sService struct {\n", tnp) +
+		fmt.Sprintf("\t%sDao *dao.%sDao\n", tni, tnp) + 
+		"}\n\n\n"
+
+	code += fmt.Sprintf("func New%sService() *%sService {\n", tnp, tnp) +
+		fmt.Sprintf("\t%sDao := service.New%sDao()\n", tni, tnp) +
+		fmt.Sprintf("\treturn &%sService{%sDao}\n", tnp, tni) +
+		"}\n\n\n"
+
+	// *Service.GetAll()
+	code += fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnp, tnp) +
+		fmt.Sprintf("\trows, err := serv.%sDao.SelectAll()\n", tni) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
+		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
+		"\treturn ret, err\n}\n\n\n"
+
+	// *Service.GetOne()
+	code += fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+	
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			cnp := SnakeToPascal(col.ColumnName)
+			if isFirst {
+				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+				isFirst = false
+			} else {
+				code += "||\n"
+				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+			}
+ 		}
+	}
+	code += "{\n"
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+
+	code += fmt.Sprintf("\trow, err := serv.%sDao.Select(%s)\n", tni, tni) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"}\n\n\n"
+
+	// *Service.Create()
+	code += fmt.Sprintf("func (serv *%sService) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+	
+	isFirst = true
+	for _, col := range table.Columns {
+		if !col.IsAuto && !col.IsReadOnly {
+			cnp := SnakeToPascal(col.ColumnName)
+			if isFirst {
+				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+				isFirst = false
+			} else {
+				code += "||\n"
+				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+			}
+ 		}
+	}
+	code += "{\n"
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+
+	code += fmt.Sprintf("\trow, err := serv.%sDao.Insert(%s)\n", tni, tni) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"}\n\n\n"
+
+	// *Service.Update()
+	code += fmt.Sprintf("func (serv *%sService) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+	
+	isFirst = true
+	for _, col := range table.Columns {
+		if !col.IsReadOnly {
+			cnp := SnakeToPascal(col.ColumnName)
+			if isFirst {
+				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+				isFirst = false
+			} else {
+				code += "||\n"
+				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+			}
+ 		}
+	}
+	code += "{\n"
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+
+	code += fmt.Sprintf("\trow, err := serv.%sDao.Update(%s)\n", tni, tni) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"}\n\n\n"
+
+	// *Service.Delete()
+	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+	
+	isFirst = true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			cnp := SnakeToPascal(col.ColumnName)
+			if isFirst {
+				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+				isFirst = false
+			} else {
+				code += "||\n"
+				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
+			}
+ 		}
+	}
+	code += "{\n"
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+
+	code += fmt.Sprintf("\trow, err := serv.%sDao.Delete(%s)\n", tni, tni) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		"\treturn err\n}\n\n\n"
+
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
