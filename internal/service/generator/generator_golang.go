@@ -3,6 +3,7 @@ package generator
 import (
 	"os"
 	"fmt"
+	"strings"
 
 	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
@@ -406,12 +407,12 @@ func (serv *SourceGeneratorGolang) generateSourceModel() error {
 		logger.LogError(err.Error())
 		return err
 	}
-/*
+
 	if err := serv.generateSourceDao(); err != nil {
 		logger.LogError(err.Error())
 		return err
 	}
-*/
+
 	return nil
 }
 
@@ -569,7 +570,7 @@ func (serv *SourceGeneratorGolang) generateSourceEntityFileToDtoCode(table *dto.
 	code += fmt.Sprintf("\n\treturn %sDto\n}\n", tni)
 	return code
 }
-/*
+
 func (serv *SourceGeneratorGolang) generateSourceDao() error {
 	path := serv.path + "model/dao/"
 
@@ -598,15 +599,251 @@ func (serv *SourceGeneratorGolang) generateSourceDaoFile(table *dto.Table, path 
 		"\t\"database/sql\"\n\n\t\"masmaint/core/db\"\n\t\"masmaint/model/entity\"\n)\n\n\n"
 
 	code += fmt.Sprintf("type %sDao struct {\n\tdb *sql.DB\n}\n\n", tnp) +
-		fmt.Sprintf("func NewDepartmentDao() *DepartmentDao {")
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		cnp := SnakeToPascal(cn)
-		code += fmt.Sprintf("\t%s %s `db:\"%s\"`\n", cnp, serv.getEntityFieldType(&col), cn)
-	}
-	code += "}\n\n"
-	code += serv.generateSourceEntityFileSettersCode(table)
+		fmt.Sprintf("func New%sDao() *%sDao {\n", tnp, tnp) + 
+		fmt.Sprintf("\tdb := db.GetDB()\n\treturn &%sDao{db}\n}\n\n\n", tnp)
+
+	code += serv.generateSourceDaoFileSelectAllCode(table) + "\n\n"
+	code += serv.generateSourceDaoFileSelectCode(table) + "\n\n"
+	code += serv.generateSourceDaoFileInsertCode(table) + "\n\n"
+	code += serv.generateSourceDaoFileUpdateCode(table) + "\n\n"
+	code += serv.generateSourceDaoFileDeleteCode(table) + "\n"
 
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
-*/
+
+func (serv *SourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column) string {
+	var ls []string
+	for _, col := range cols {
+		if col.IsPrimaryKey {
+			ls = append(ls, col.ColumnName)
+		}
+	}
+	return strings.Join(ls, ", ")
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFileSelectAllCode(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) SelectAll() ([]entity.%s, error) {\n", tnp, tnp) +
+		fmt.Sprintf("\tvar ret []entity.%s\n\n\trows, err := rep.db.Query(\n", tnp)
+
+	code += "\t\t`SELECT\n"
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
+		}
+	}
+	code += fmt.Sprintf("\n\t\t FROM %s\n\t\t ORDER BY %s ASC", tn, serv.concatPrimaryKeyWithCommas(table.Columns))
+	code += "`"
+	code += ",\n\t)\n\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n"
+
+	code += fmt.Sprintf("\tfor rows.Next() {\n\t\t%s := entity.%s{}\n\t\terr = rows.Scan(\n", tni, tnp)
+	for _, col := range table.Columns {
+		cnp := SnakeToPascal(col.ColumnName)
+		code += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, cnp)
+	}
+	code += fmt.Sprintf("\t\t)\n\t\tif err != nil {\n\t\t\tbreak\n\t\t}\n\t\tret = append(ret, %s)\n\t}\n\n", tni)
+
+	code += "\treturn ret, err\n}\n"
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFileSelectCode(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Select(%s *entity.%s) (entity.%s, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
+
+	code += "\t\t`SELECT\n"
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t%s\n", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\t\t\t,%s\n", col.ColumnName)
+		}
+	}
+	code += fmt.Sprintf("\t\t FROM %s\n\t\t WHERE ", tn)
+
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("%s = $1", col.ColumnName)
+			} else {
+				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+			}
+		}
+	}
+	code += "`"
+	code += ",\n"
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+
+	code += "\t).Scan(\n"
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
+	}
+	code += "\t)\n\n\treturn ret, err\n}\n" 
+
+	return code
+}
+
+func (serv *SourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) string {
+	var ls []string
+	for i := 1; i <= bindCount; i++ {
+		ls = append(ls, fmt.Sprintf("$%d", i))
+	}
+	return strings.Join(ls, ",")
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFileInsertCode(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Insert(%s *entity.%s) (entity.%s, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
+
+	code += fmt.Sprintf("\t\t`INSERT INTO %s (\n", tn)
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
+			} else {
+				code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
+			}
+		}
+	}
+	code += fmt.Sprintf("\n\t\t ) VALUES (%s)\n\t\t RETURNING\n", serv.concatBindVariableWithCommas(bindCount))
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
+		}
+	}
+	code += "`"
+	code += ",\n"
+
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+
+	code += "\t).Scan(\n"
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
+	}
+	code += "\t)\n\n\treturn ret, err\n}\n" 
+
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFileUpdateCode(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Update(%s *entity.%s) (entity.%s, error) {\n", tnp, tni, tnp, tnp) +
+		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
+
+	code += fmt.Sprintf("\t\t`UPDATE %s\n\t\t SET\n", tn)
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("\t\t\t%s = $1", col.ColumnName)
+			} else {
+				code += fmt.Sprintf("\n\t\t\t,%s = $%d", col.ColumnName, bindCount)
+			}
+		}
+	}
+	code += "\n\t\t WHERE "
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			bindCount += 1
+			if isFirst {
+				code += fmt.Sprintf("%s = $%d", col.ColumnName, bindCount)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+			}
+		}
+	}
+	code += "\n\t\t RETURNING \n"
+
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
+		}
+	}
+	code += "`"
+	code += ",\n"
+
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+
+	code += "\t).Scan(\n"
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
+	}
+	code += "\t)\n\n\treturn ret, err\n}\n" 
+
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFileDeleteCode(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Delete(%s *entity.%s) error {\n", tnp, tni, tnp) +
+		"\t_, err := rep.db.Exec(\n"
+
+	code += fmt.Sprintf("\t\t`DELETE FROM %s\n\t\t WHERE ", tn)
+
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("%s = $1", col.ColumnName)
+			} else {
+				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+			}
+		}
+	}
+	code += "`"
+	code += ",\n"
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+	code += "\t)\n\n\treturn err\n}\n" 
+
+	return code
+}
