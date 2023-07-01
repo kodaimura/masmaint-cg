@@ -908,88 +908,199 @@ func (serv *SourceGeneratorGolang) generateSourceJsFiles(path string) error {
 	return nil
 }
 
-func (serv *SourceGeneratorGolang) generateSourceJsFile(table *dto.Table, path string) error {
-	tn := table.TableName
-	code := JS_COMMON_CODE
-
-	code += "\n\n/* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/\nconst createTrNew = (elem) => {\n" +
-		"\treturn `<tr id='new'><td></td>`\n"
+func (serv *SourceGeneratorGolang) generateSourceJsCode_createTrNew(table *dto.Table) string {
+	code := "`<tr id='new'><td></td>`"
 	for _, col := range table.Columns {
 		if col.IsInsAble {
-			code += fmt.Sprintf("\t\t+ `<td><input type='text' id='%s_new'></td>`\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t+ `<td><input type='text' id='%s_new'></td>`", col.ColumnName)
 		} else {
-			code += "\t\t+ `<td><input type='text' disabled></td>`\n"
+			code += "\n\t\t+ `<td><input type='text' disabled></td>`"
 		}
 	}
-	code += "}\n\n"
+	return code + ";"
+}
 
-	code += "/* <tr></tr>を作成 */\nconst createTr = (elem) => {\n" +
-		"\treturn `<tr><td><input class='form-check-input' type='checkbox' name='del' value=${JSON.stringify(elem)}></td>`\n"
+func (serv *SourceGeneratorGolang) generateSourceJsCode_createTr(table *dto.Table) string {
+	code := "`<tr><td><input class='form-check-input' type='checkbox' name='del' value=${JSON.stringify(elem)}></td>`"
 	for _, col := range table.Columns {
 		cn := col.ColumnName
 		if col.IsUpdAble {
-			code += fmt.Sprintf("\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}'><input type='hidden' name='%s_bk' value='${nullToEmpty(elem.%s)}'></td>`\n", cn, cn, cn, cn)
+			code += fmt.Sprintf("\n\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}'><input type='hidden' name='%s_bk' value='${nullToEmpty(elem.%s)}'></td>`", cn, cn, cn, cn)
 		} else {
-			code += fmt.Sprintf("\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}' disabled></td>`\n", cn, cn)
+			code += fmt.Sprintf("\n\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}' disabled></td>`", cn, cn)
 		}
 	}
-	code += "}\n\n\n"
+	return code + ";"
+}
 
-	code += fmt.Sprintf(`/* セットアップ */
+func (serv *SourceGeneratorGolang) generateSourceJsCode_setUp(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\n\t\taddChangedAction('%s');", col.ColumnName)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPutAll(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		code += fmt.Sprintf("\n\tlet %s = document.getElementsByName('%s');", cn, cn)
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\n\tlet %s_bk = document.getElementsByName('%s_bk');", cn, cn)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPutAll_if(table *dto.Table) string {
+	code := ""
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			cn := col.ColumnName
+			if isFirst {
+				code += fmt.Sprintf("(%s[i].value !== %s_bk[i].value)", cn, cn)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t\t|| (%s[i].value !== %s_bk[i].value)", cn, cn)
+			}
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPutAll_requestBody(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		if col.IsUpdAble || col.IsPrimaryKey {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\n\t\t\t\t%s: %s[i].value,", cn, cn)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPutAll_then(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		code += fmt.Sprintf("\n\t\t\t\t%s[i].value = data.%s;", cn, cn)
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\n\t\t\t\t%s_bk[i].value = data.%s;", cn, cn)
+		}
+	}
+	code += "\n"
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\n\t\t\t\t%s[i].classList.remove('changed');", col.ColumnName)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPost(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\n\tlet %s = document.getElementById('%s_new').value;", cn, cn)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPost_if(table *dto.Table) string {
+	code := ""
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("(%s !== '')", col.ColumnName)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t|| (%s !== '')", col.ColumnName)
+			}
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsCode_doPost_requestBody(table *dto.Table) string {
+	code := ""
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\n\t\t\t%s: %s,", cn, cn)
+		}
+	}
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	code := JS_COMMON_CODE + "\n"
+	code += fmt.Sprintf(
+		JS_FORMAT_CODE, 
+		serv.generateSourceJsCode_createTrNew(table),
+		serv.generateSourceJsCode_createTr(table),
+		tn,
+		serv.generateSourceJsCode_setUp(table),
+		serv.generateSourceJsCode_doPutAll(table),
+		serv.generateSourceJsCode_doPutAll_if(table),
+		serv.generateSourceJsCode_doPutAll_requestBody(table),
+		tn,
+		serv.generateSourceJsCode_doPutAll_then(table),
+		serv.generateSourceJsCode_doPost(table),
+		serv.generateSourceJsCode_doPost_if(table),
+		serv.generateSourceJsCode_doPost_requestBody(table),
+		tn,
+		tn,
+	)
+
+	return WriteFile(fmt.Sprintf("%s%s.js", path, tn), code)
+}
+
+
+
+const JS_FORMAT_CODE =
+`
+/* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/
+const createTrNew = (elem) => {
+	return %s
+} 
+
+/* <tr></tr>を作成 */
+const createTr = (elem) => {
+	return %s
+} 
+
+
+/* セットアップ */
 const setUp = () => {
 	fetch('api/%s')
 	.then(response => response.json())
 	.then(data  => renderTbody(data))
-	.then(() => {`, tn) + "\n"
-
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			cn := col.ColumnName
-			code += fmt.Sprintf("\t\taddChangedAction('%s');\n", cn)
-		}
-	}
-
-	code += `	});
+	.then(() => {%s
+	});
 }
 
 
 /* 一括更新 */
 const doPutAll = async () => {
 	let successCount = 0;
-	let errorCount = 0;` + "\n\n" 
+	let errorCount = 0;
+	%s
 
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		code += fmt.Sprintf("\tlet %s = document.getElementsByName('%s');\n", cn, cn)
-		if col.IsUpdAble {
-			code += fmt.Sprintf("\tlet %s_bk = document.getElementsByName('%s_bk');\n", cn, cn)
-		}
-	}
+	for (let i = 0; i < first_name.length; i++) {
+		if (%s) {
 
-	code += fmt.Sprintf("\n\tfor (let i = 0; i < %s.length; i++) {\n", table.Columns[0].ColumnName)
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			cn := col.ColumnName
-			if isFirst {
-				code += fmt.Sprintf("\t\tif ((%s[i].value !== %s_bk[i].value) ", cn, cn)
-				isFirst = false
-			} else {
-				code += fmt.Sprintf("\n\t\t\t|| (%s[i].value !== %s_bk[i].value) ", cn, cn)
+			let requestBody = {%s
 			}
-		}
-	}
 
-	code += "){\n\n\t\t\tlet requestBody = {\n"
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			cn := col.ColumnName
-			code += fmt.Sprintf("\t\t\t\t%s: %s[i].value,\n", cn, cn)
-		}
-	}
-	code += "\t\t\t}\n\n"
-
-	code += fmt.Sprintf(`			await fetch('api/%s', {
+			await fetch('api/%s', {
 				method: 'PUT',
 				headers: {'Content-Type': 'application/json'},
 				body: JSON.stringify(requestBody)
@@ -1000,24 +1111,8 @@ const doPutAll = async () => {
 				}
   				return response.json();
   			})
-			.then(data => {`, tn) + "\n"
+			.then(data => {%s
 
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		code += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
-		if col.IsUpdAble {
-			code += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
-		}
-	}
-	code += "\n"
-
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			cn := col.ColumnName
-			code += fmt.Sprintf("\t\t\t\t%s[i].classList.remove('changed');\n", cn)
-		}
-	}
-	code += `
 				successCount += 1;
 			}).catch(error => {
 				errorCount += 1;				
@@ -1027,40 +1122,18 @@ const doPutAll = async () => {
 
 	renderMessage('更新', successCount, true);
 	renderMessage('更新', errorCount, false);
-	renderMessage('更新', successCount, true);
-	renderMessage('更新', errorCount, false);
 } 
 
 
 /* 新規登録 */
-const doPost = () => {` + "\n"
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			cn := col.ColumnName
-			code += fmt.Sprintf("\tlet %s = document.getElementById('%s_new').value;\n", cn, cn)
+const doPost = () => {%s
+
+	if (%s)
+	{
+		let requestBody = {%s
 		}
-	}
-	isFirst = true
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		if col.IsInsAble {
-			if isFirst {
-				code += fmt.Sprintf("\tif ((%s !== '')", cn)
-				isFirst = false
-			} else {
-				code += fmt.Sprintf("\n\t\t|| (%s !== '')", cn)
-			}
-		}
-	}
-	code += ")\n\t{\n\t\tlet requestBody = {\n"
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			cn := col.ColumnName
-			code += fmt.Sprintf("\t\t\t%s: %s,\n", cn, cn)
-		}
-	}
-	code += "\t\t}\n\n"
-	code += fmt.Sprintf(`		fetch('api/%s', {
+
+		fetch('api/%s', {
 			method: 'POST',
 			headers: {'Content-Type': 'application/json'},
 			body: JSON.stringify(requestBody)
@@ -1088,9 +1161,10 @@ const doPost = () => {` + "\n"
 			renderMessage('登録', 1, false);
 		})
 	}
-}`, tn) + "\n\n\n"
+}
 
-	code += fmt.Sprintf(`/* 一括削除 */
+
+/* 一括削除 */
 const doDeleteAll = async () => {
 	let ls = getDeleteTarget();
 	let successCount = 0;
@@ -1116,7 +1190,5 @@ const doDeleteAll = async () => {
 
 	renderMessage('削除', successCount, true);
 	renderMessage('削除', errorCount, false);
-}`, tn) 
-
-	return WriteFile(fmt.Sprintf("%s%s.js", path, tn), code)
 }
+`
