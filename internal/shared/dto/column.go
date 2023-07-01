@@ -6,6 +6,6 @@ type Column struct {
 	ColumnType string
 	IsPrimaryKey bool
 	IsNotNull bool
-	IsAuto bool
-	IsReadOnly bool
+	IsInsAble bool
+	IsUpdAble bool
 }

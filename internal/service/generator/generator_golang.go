@@ -155,7 +155,7 @@ func (serv *SourceGeneratorGolang) generateSourceControllerFile(table *dto.Table
 
 	code += fmt.Sprintf("type %sController struct {\n", tnp) +
 		fmt.Sprintf("\t%sServ *service.%sService\n", tni, tnp) + 
-		"}\n\n\n"
+		"}\n\n"
 
 	code += fmt.Sprintf("func New%sController() *%sController {\n", tnp, tnp) +
 		fmt.Sprintf("\t%sServ := service.New%sService()\n", tni, tnp) +
@@ -261,7 +261,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFiles(path string) error
 }
 
 func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, path string) error {
-	code := "package dto\n\nimport (\n" +
+	code := "package service\n\nimport (\n" +
 		"\t\"errors\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
 		"\t\"masmaint/model/dao\"\n\t\"masmaint/dto\"\n)\n\n\n"
 
@@ -279,7 +279,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	code += fmt.Sprintf("type %sService struct {\n", tnp) +
 		fmt.Sprintf("\t%sDao *dao.%sDao\n", tni, tnp) + 
-		"}\n\n\n"
+		"}\n\n"
 
 	code += fmt.Sprintf("func New%sService() *%sService {\n", tnp, tnp) +
 		fmt.Sprintf("\t%sDao := service.New%sDao()\n", tni, tnp) +
@@ -297,7 +297,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.GetOne()
 	code += fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst := true
 	for _, col := range table.Columns {
@@ -323,11 +323,11 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Create()
 	code += fmt.Sprintf("func (serv *%sService) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
-		if !col.IsAuto && !col.IsReadOnly {
+		if col.IsInsAble {
 			cnp := SnakeToPascal(col.ColumnName)
 			if isFirst {
 				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
@@ -349,11 +349,11 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Update()
 	code += fmt.Sprintf("func (serv *%sService) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
-		if !col.IsReadOnly {
+		if col.IsPrimaryKey || col.IsUpdAble {
 			cnp := SnakeToPascal(col.ColumnName)
 			if isFirst {
 				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
@@ -375,7 +375,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Delete()
 	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
@@ -396,7 +396,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Delete(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		"\t\treturn errors.New(\"削除に失敗しました。\")\n\t}\n\n" +
-		"\treturn nil\n}\n\n\n"
+		"\treturn nil\n}\n\n"
 
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
@@ -569,3 +569,44 @@ func (serv *SourceGeneratorGolang) generateSourceEntityFileToDtoCode(table *dto.
 	code += fmt.Sprintf("\n\treturn %sDto\n}\n", tni)
 	return code
 }
+/*
+func (serv *SourceGeneratorGolang) generateSourceDao() error {
+	path := serv.path + "model/dao/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceDaoFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceDaoFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceDaoFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	code := "package dao\n\nimport (\n" +
+		"\t\"database/sql\"\n\n\t\"masmaint/core/db\"\n\t\"masmaint/model/entity\"\n)\n\n\n"
+
+	code += fmt.Sprintf("type %sDao struct {\n\tdb *sql.DB\n}\n\n", tnp) +
+		fmt.Sprintf("func NewDepartmentDao() *DepartmentDao {")
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		cnp := SnakeToPascal(cn)
+		code += fmt.Sprintf("\t%s %s `db:\"%s\"`\n", cnp, serv.getEntityFieldType(&col), cn)
+	}
+	code += "}\n\n"
+	code += serv.generateSourceEntityFileSettersCode(table)
+
+	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+}
+*/
