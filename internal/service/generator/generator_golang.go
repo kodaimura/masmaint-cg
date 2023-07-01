@@ -45,11 +45,10 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceModel(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateSourceWeb(); err != nil {
 		return err
 	}
-	*/
+
 	return nil	
 }
 
@@ -62,7 +61,6 @@ func (serv *SourceGeneratorGolang) generateSourceCmd() error {
 		logger.LogError(err.Error())
 	}
 	return err
-
 }
 
 func (serv *SourceGeneratorGolang) generateSourceConfig() error {
@@ -846,4 +844,279 @@ func (serv *SourceGeneratorGolang) generateSourceDaoFileDeleteCode(table *dto.Ta
 	code += "\t)\n\n\treturn err\n}\n" 
 
 	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceWeb() error {
+	source := "_originalcopy_/golang/web"
+	destination := serv.path + "web/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	if err := serv.generateSourceStatic(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+/*
+	if err := serv.generateSourceTemplate(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+*/
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceStatic() error {
+	if err := serv.generateSourceCss(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	if err := serv.generateSourceJs(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceCss() error {
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJs() error {
+	path := serv.path + "web/static/js/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceJsFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceJsFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceJsFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	code := JS_COMMON_CODE
+
+	code += "\n\n/* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/\nconst createTrNew = (elem) => {\n" +
+		"\treturn `<tr id='new'><td></td>`\n"
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			code += fmt.Sprintf("\t\t+ `<td><input type='text' id='%s_new'></td>`\n", col.ColumnName)
+		} else {
+			code += "\t\t+ `<td><input type='text' disabled></td>`\n"
+		}
+	}
+	code += "}\n\n"
+
+	code += "/* <tr></tr>を作成 */\nconst createTr = (elem) => {\n" +
+		"\treturn `<tr><td><input class='form-check-input' type='checkbox' name='del' value=${JSON.stringify(elem)}></td>`\n"
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}'><input type='hidden' name='%s_bk' value='${nullToEmpty(elem.%s)}'></td>`\n", cn, cn, cn, cn)
+		} else {
+			code += fmt.Sprintf("\t\t+ `<td><input type='text' name='%s' value='${nullToEmpty(elem.%s)}' disabled></td>`\n", cn, cn)
+		}
+	}
+	code += "}\n\n\n"
+
+	code += fmt.Sprintf(`/* セットアップ */
+const setUp = () => {
+	fetch('api/%s')
+	.then(response => response.json())
+	.then(data  => renderTbody(data))
+	.then(() => {`, tn) + "\n"
+
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\t\taddChangedAction('%s');\n", cn)
+		}
+	}
+
+	code += `	});
+}
+
+
+/* 一括更新 */
+const doPutAll = async () => {
+	let successCount = 0;
+	let errorCount = 0;` + "\n\n" 
+
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		code += fmt.Sprintf("\tlet %s = document.getElementsByName('%s');\n", cn, cn)
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\tlet %s_bk = document.getElementsByName('%s_bk');\n", cn, cn)
+		}
+	}
+
+	code += fmt.Sprintf("\n\tfor (let i = 0; i < %s.length; i++) {\n", table.Columns[0].ColumnName)
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			cn := col.ColumnName
+			if isFirst {
+				code += fmt.Sprintf("\t\tif ((%s[i].value !== %s_bk[i].value) ", cn, cn)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t\t|| (%s[i].value !== %s_bk[i].value) ", cn, cn)
+			}
+		}
+	}
+
+	code += "){\n\n\t\t\tlet requestBody = {\n"
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\t\t\t\t%s: %s[i].value,\n", cn, cn)
+		}
+	}
+	code += "\t\t\t}\n\n"
+
+	code += fmt.Sprintf(`			await fetch('api/%s', {
+				method: 'PUT',
+				headers: {'Content-Type': 'application/json'},
+				body: JSON.stringify(requestBody)
+			})
+			.then(response => {
+				if (!response.ok){
+					throw new Error(response.statusText);
+				}
+  				return response.json();
+  			})
+			.then(data => {`, tn) + "\n"
+
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		code += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
+		}
+	}
+	code += "\n"
+
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\t\t\t\t%s[i].classList.remove('changed');\n", cn)
+		}
+	}
+	code += `
+				successCount += 1;
+			}).catch(error => {
+				errorCount += 1;				
+			})
+		}
+	}
+
+	renderMessage('更新', successCount, true);
+	renderMessage('更新', errorCount, false);
+	renderMessage('更新', successCount, true);
+	renderMessage('更新', errorCount, false);
+} 
+
+
+/* 新規登録 */
+const doPost = () => {` + "\n"
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\tlet %s = document.getElementById('%s_new').value;\n", cn, cn)
+		}
+	}
+	isFirst = true
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("\tif ((%s !== '')", cn)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t|| (%s !== '')", cn)
+			}
+		}
+	}
+	code += ")\n\t{\n\t\tlet requestBody = {\n"
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			cn := col.ColumnName
+			code += fmt.Sprintf("\t\t\t%s: %s,\n", cn, cn)
+		}
+	}
+	code += "\t\t}\n\n"
+	code += fmt.Sprintf(`		fetch('api/%s', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify(requestBody)
+		})
+		.then(response => {
+			if (!response.ok){
+				throw new Error(response.statusText);
+			}
+  			return response.json();
+  		})
+		.then(data => {
+			document.getElementById('new').remove();
+
+			let tmpElem = document.createElement('tbody');
+			tmpElem.innerHTML = createTr(data);
+			tmpElem.firstChild.addEventListener('change', changeAction);
+			document.getElementById('records').appendChild(tmpElem.firstChild);
+
+			tmpElem = document.createElement('tbody');
+			tmpElem.innerHTML = createTrNew();
+			document.getElementById('records').appendChild(tmpElem.firstChild);
+
+			renderMessage('登録', 1, true);
+		}).catch(error => {
+			renderMessage('登録', 1, false);
+		})
+	}
+}`, tn) + "\n\n\n"
+
+	code += fmt.Sprintf(`/* 一括削除 */
+const doDeleteAll = async () => {
+	let ls = getDeleteTarget();
+	let successCount = 0;
+	let errorCount = 0;
+
+	for (let x of ls) {
+		await fetch('api/%s', {
+			method: 'DELETE',
+			headers: {'Content-Type': 'application/json'},
+			body: x
+		})
+		.then(response => {
+			if (!response.ok){
+				throw new Error(response.statusText);
+			}
+			successCount += 1;
+  		}).catch(error => {
+			errorCount += 1;
+		});
+	}
+
+	setUp();
+
+	renderMessage('削除', successCount, true);
+	renderMessage('削除', errorCount, false);
+}`, tn) 
+
+	return WriteFile(fmt.Sprintf("%s%s.js", path, tn), code)
 }

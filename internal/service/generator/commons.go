@@ -18,7 +18,7 @@ func WriteFile(path, content string) error {
 		logger.LogError(err.Error())
 		return err
 	}
-	if _, err = f.Write([]byte(content)); err != nil {
+	if _, err = f.WriteString(content); err != nil {
 		logger.LogError(err.Error())
 		return err
 	}
@@ -107,4 +107,30 @@ func GetSnakeInitial(snake string) string {
 		ret = s[0:1]
 	}
 	return ret
+}
+
+// Js共通部分
+var JS_COMMON_CODE = readFile("_originalcopy_/js_common_code.js")
+
+func readFile(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		logger.LogFatal(err.Error())
+	}
+	defer file.Close()
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		logger.LogFatal(err.Error())
+	}
+	fileSize := fileInfo.Size()
+
+	content := make([]byte, fileSize)
+
+	_, err = file.Read(content)
+	if err != nil {
+		logger.LogFatal(err.Error())
+	}
+
+	return string(content)
 }
