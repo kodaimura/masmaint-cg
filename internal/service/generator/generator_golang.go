@@ -41,11 +41,10 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceService(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateSourceModel(); err != nil {
 		return err
 	}
-
+	/*
 	if err := serv.generateSourceWeb(); err != nil {
 		return err
 	}
@@ -400,4 +399,173 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 		"\treturn nil\n}\n\n\n"
 
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceModel() error {
+	if err := serv.generateSourceEntity(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+/*
+	if err := serv.generateSourceDao(); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+*/
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntity() error {
+	path := serv.path + "model/entity/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceEntityFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntityFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceEntityFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
+	isNotNull := col.IsNotNull
+	colType := col.ColumnType
+	if colType == "s" || colType == "t" {
+		if isNotNull {
+			return "string"
+		}
+		return "sql.NullString"
+	}
+	if colType == "i" {
+		if isNotNull {
+			return "int64"
+		}
+		return "sql.NullInt64"
+	}
+	if colType == "f" {
+		if isNotNull {
+			return "float64"
+		}
+		return "sql.NullFloat64"
+	}
+	return ""
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntityFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	code := "package entity\n\nimport (\n" +
+		"\t\"database/sql\"\n\n\t\"masmaint/dto\"\n\t\"masmaint/core/utils\"\n)\n\n\n"
+
+	code += fmt.Sprintf("type %s struct {\n", tnp)
+	for _, col := range table.Columns {
+		cn := col.ColumnName
+		cnp := SnakeToPascal(cn)
+		code += fmt.Sprintf("\t%s %s `db:\"%s\"`\n", cnp, serv.getEntityFieldType(&col), cn)
+	}
+	code += "}\n\n"
+	code += serv.generateSourceEntityFileSettersCode(table)
+
+	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntityFileSettersCode(table *dto.Table) string {
+	tnp := SnakeToPascal(table.TableName)
+
+	code := fmt.Sprintf("func New%s() *%s {\n\treturn &%s{}\n}\n\n", tnp, tnp, tnp)
+	for _, col := range table.Columns {
+		code += serv.generateSourceEntityFileSetterCode(table, &col)
+	}
+
+	code += "\n"
+	code += serv.generateSourceEntityFileToDtoCode(table)
+	
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntityFileSetterCode(table *dto.Table, col *dto.Column) string {
+	tnp := SnakeToPascal(table.TableName)
+	colType := serv.getEntityFieldType(col)
+	cnp := SnakeToPascal(col.ColumnName)
+	cnc := SnakeToCamel(col.ColumnName)
+
+	code := fmt.Sprintf("func (e *%s) Set%s(%s any) error {\n", tnp, cnp, cnc)
+
+	switch colType {
+	case "string":
+		code += fmt.Sprintf("\te.%s = utils.ToString(%s)\n\treturn nil\n}\n\n", cnp, cnc)
+
+	case "int64":
+		code += fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
+
+	case "float64":
+		code += fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
+			
+	case "sql.NullString":
+		if col.ColumnType == "t" {
+			code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc)
+		} else {
+			code += fmt.Sprintf("\tif %s == nil {\n", cnc)
+		}
+		code += fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
+			fmt.Sprintf("\te.%s.String = utils.ToString(%s)\n", cnp, cnc) +
+			fmt.Sprintf("\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp)
+
+	case "sql.NullInt64":
+		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
+			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
+			fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\te.%s.Int64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
+
+	case "sql.NullFloat64":
+		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
+			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
+			fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\te.%s.Float64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
+	}
+
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateSourceEntityFileToDtoCode(table *dto.Table) string {
+	tnp := SnakeToPascal(table.TableName)
+	tni := GetSnakeInitial(table.TableName)
+
+	code := fmt.Sprintf("func (e *%s) To%sDto() dto.%sDto {\n", tnp, tnp, tnp) +
+		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp)
+	for _, col := range table.Columns {
+		colType := serv.getEntityFieldType(&col)
+		cnp := SnakeToPascal(col.ColumnName)
+
+		switch colType {
+		case "string", "int64", "float64":
+			code += fmt.Sprintf("\t%sDto.%s = e.%s\n", tni, cnp, cnp)
+
+		case "sql.NullString":
+			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
+				fmt.Sprintf("\t\t%sDto.%s = e.%s.String\n\t}\n", tni, cnp, cnp)
+
+		case "sql.NullInt64":
+			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
+				fmt.Sprintf("\t\t%sDto.%s = e.%s.Int64\n\t}\n", tni, cnp, cnp)
+				
+		case "sql.NullFloat64":
+			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
+				fmt.Sprintf("\t\t%sDto.%s = e.%s.Float64\n\t}\n", tni, cnp, cnp)	
+		}
+	}
+
+	code += fmt.Sprintf("\n\treturn %sDto\n}\n", tni)
+	return code
 }
