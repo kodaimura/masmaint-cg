@@ -45,6 +45,7 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceModel(); err != nil {
 		return err
 	}
+
 	if err := serv.generateSourceWeb(); err != nil {
 		return err
 	}
@@ -289,10 +290,11 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	// *Service.GetAll()
 	code += fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnp, tnp) +
 		fmt.Sprintf("\trows, err := serv.%sDao.SelectAll()\n", tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		fmt.Sprintf("\t\treturn []dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
 		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
-		"\treturn ret, err\n}\n\n\n"
+		"\treturn ret, nil\n}\n\n\n"
 
 	// *Service.GetOne()
 	code += fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
@@ -315,8 +317,9 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Select(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
-		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n\n\n"
 
 	// *Service.Create()
@@ -340,8 +343,9 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Insert(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
-		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n\n\n"
 
 	// *Service.Update()
@@ -365,8 +369,9 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Update(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
-		fmt.Sprintf("\treturn row.To%sDto(), err\n", tnp) +
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n\n\n"
 
 	// *Service.Delete()
@@ -390,8 +395,9 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Delete(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n\t}\n\n" +
-		"\treturn err\n}\n\n\n"
+		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\t\treturn errors.New(\"削除に失敗しました。\")\n\t}\n\n" +
+		"\treturn nil\n}\n\n\n"
 
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
