@@ -1,138 +1,9 @@
 package generator
 
 import (
-	"io"
-	"os"
 	"fmt"
-	"strings"
-	"path/filepath"
-
-	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
 )
-
-
-func WriteFile(path, content string) error {
-	f, err := os.Create(path)
-	defer f.Close()
-
-	if err != nil {
-		logger.LogError(err.Error())
-		return err
-	}
-	if _, err = f.WriteString(content); err != nil {
-		logger.LogError(err.Error())
-		return err
-	}
-	return nil
-}
-
-
-func CopyFile(source string, destination string) error {
-	src, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer src.Close()
-
-	dst, err := os.Create(destination)
-	if err != nil {
-		return err
-	}
-	defer dst.Close()
-
-	_, err = io.Copy(dst, src)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-
-func CopyDir(source string, destination string) error {
-	err := os.MkdirAll(destination, 0755)
-	if err != nil {
-		return err
-	}
-
-	entries, err := os.ReadDir(source)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		sourcePath := filepath.Join(source, entry.Name())
-		destinationPath := filepath.Join(destination, entry.Name())
-
-		if entry.IsDir() {
-			err := CopyDir(sourcePath, destinationPath)
-			if err != nil {
-				return err
-			}
-		} else {
-			err := CopyFile(sourcePath, destinationPath)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-//xxx -> Xxx / xxx_yyy -> XxxYyy
-func SnakeToPascal(snake string) string {
-	ls := strings.Split(strings.ToLower(snake), "_")
-	for i, s := range ls {
-		ls[i] = strings.ToUpper(s[0:1]) + s[1:]
-	}
-	return strings.Join(ls, "")
-}
-
-//xxx -> xxx / xxx_yyy -> xxxYyy
-func SnakeToCamel(snake string) string {
-	ls := strings.Split(strings.ToLower(snake), "_")
-	for i, s := range ls {
-		if i != 0 {
-			ls[i] = strings.ToUpper(s[0:1]) + s[1:]
-		}
-	}
-	return strings.Join(ls, "")
-}
-
-//xxx -> x / xxx_yyy -> xy
-func GetSnakeInitial(snake string) string {
-	ls := strings.Split(strings.ToLower(snake), "_")
-	ret := ""
-	for _, s := range ls {
-		ret = s[0:1]
-	}
-	return ret
-}
-
-func readFile(path string) string {
-	file, err := os.Open(path)
-	if err != nil {
-		logger.LogFatal(err.Error())
-	}
-	defer file.Close()
-
-	fileInfo, err := file.Stat()
-	if err != nil {
-		logger.LogFatal(err.Error())
-	}
-	fileSize := fileInfo.Size()
-
-	content := make([]byte, fileSize)
-
-	_, err = file.Read(content)
-	if err != nil {
-		logger.LogFatal(err.Error())
-	}
-
-	return string(content)
-}
 
 
 // Jsコード生成
@@ -161,7 +32,7 @@ func GenerateJsCode(table *dto.Table) string {
 }
 
 // Js共通部分
-var JS_COMMON_CODE = readFile("_originalcopy_/js_common_code.js")
+var JS_COMMON_CODE = ReadFile("_originalcopy_/js_common_code.js")
 const JS_FORMAT_CODE =
 `
 /* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/
