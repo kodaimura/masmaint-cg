@@ -297,7 +297,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.GetOne()
 	code += fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
 	
 	isFirst := true
 	for _, col := range table.Columns {
@@ -323,7 +323,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Create()
 	code += fmt.Sprintf("func (serv *%sService) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
@@ -349,7 +349,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Update()
 	code += fmt.Sprintf("func (serv *%sService) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
@@ -375,7 +375,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 
 	// *Service.Delete()
 	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
-		fmt.Sprintf("var %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
+		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n", tni, tnp, tnp)
 	
 	isFirst = true
 	for _, col := range table.Columns {
