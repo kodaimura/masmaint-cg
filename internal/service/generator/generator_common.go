@@ -17,6 +17,7 @@ func GenerateJsCode(table *dto.Table) string {
 		tn,
 		generateJsCode_setUp(table),
 		generateJsCode_doPutAll(table),
+		generateJsCode_doPutAll_for(table),
 		generateJsCode_doPutAll_if(table),
 		generateJsCode_doPutAll_requestBody(table),
 		tn,
@@ -104,6 +105,15 @@ func generateJsCode_doPutAll(table *dto.Table) string {
 		}
 	}
 	return code
+}
+
+func generateJsCode_doPutAll_for(table *dto.Table) string {
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			return col.ColumnName
+		}
+	}
+	return table.Columns[0].ColumnName
 }
 
 func generateJsCode_doPutAll_if(table *dto.Table) string {
@@ -218,7 +228,7 @@ const doPutAll = async () => {
 	let errorCount = 0;
 	%s
 
-	for (let i = 0; i < first_name.length; i++) {
+	for (let i = 0; i < %s.length; i++) {
 		if (%s) {
 
 			let requestBody = {%s

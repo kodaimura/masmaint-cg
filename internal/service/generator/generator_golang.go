@@ -33,6 +33,9 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	if err := serv.generateSourceCore(); err != nil {
 		return err
 	}
+	if err := serv.generateSourceLog(); err != nil {
+		return err
+	}
 	if err := serv.generateSourceController(); err != nil {
 		return err
 	}
@@ -85,6 +88,17 @@ func (serv *SourceGeneratorGolang) generateSourceCore() error {
 	return err
 }
 
+func (serv *SourceGeneratorGolang) generateSourceLog() error {
+	source := "_originalcopy_/golang/log"
+	destination := serv.path + "log/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
 func (serv *SourceGeneratorGolang) generateSourceController() error {
 	path := serv.path + "controller/"
 
@@ -125,7 +139,7 @@ func (serv *SourceGeneratorGolang) generateSourceControllerFileRouter(path strin
 		tnp := SnakeToPascal(tn)
 
 		code += fmt.Sprintf("\t\t%sController := New%sController()\n", tnc, tnp) + 
-			fmt.Sprintf("\t\trm.GET(\"/api/%s\", %sController.Get%sPage)\n", tn, tnc, tnp) +
+			fmt.Sprintf("\t\trm.GET(\"/%s\", %sController.Get%sPage)\n", tn, tnc, tnp) +
 			fmt.Sprintf("\t\trm.GET(\"/api/%s\", %sController.Get%s)\n", tn, tnc, tnp) +
 			fmt.Sprintf("\t\trm.POST(\"/api/%s\", %sController.Post%s)\n", tn, tnc, tnp) +
 			fmt.Sprintf("\t\trm.PUT(\"/api/%s\", %sController.Put%s)\n", tn, tnc, tnp) +
@@ -197,7 +211,7 @@ func (serv *SourceGeneratorGolang) generateSourceControllerFile(table *dto.Table
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tif err := ctr.%sServ.Delete(&%sDto); err != nil {\n", tni, tni) +
 		"\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n"
+		"\tc.JSON(200, gin.H{})\n}\n"
 
 	return WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 }
@@ -281,7 +295,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 		"}\n\n"
 
 	code += fmt.Sprintf("func New%sService() *%sService {\n", tnp, tnp) +
-		fmt.Sprintf("\t%sDao := service.New%sDao()\n", tni, tnp) +
+		fmt.Sprintf("\t%sDao := dao.New%sDao()\n", tni, tnp) +
 		fmt.Sprintf("\treturn &%sService{%sDao}\n", tnp, tni) +
 		"}\n\n\n"
 
@@ -373,7 +387,7 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
 		"}\n\n\n"
 
 	// *Service.Delete()
-	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) error {\n", tnp, tni, tnp) +
 		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst = true
@@ -390,9 +404,9 @@ func (serv *SourceGeneratorGolang) generateSourceServiceFile(table *dto.Table, p
  		}
 	}
 	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+	code += "\t\treturn errors.New(\"不正な値があります。\")\n\t}\n\n"
 
-	code += fmt.Sprintf("\trow, err := serv.%sDao.Delete(%s)\n", tni, tni) +
+	code += fmt.Sprintf("\terr := serv.%sDao.Delete(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		"\t\treturn errors.New(\"削除に失敗しました。\")\n\t}\n\n" +
 		"\treturn nil\n}\n\n"
@@ -504,11 +518,11 @@ func (serv *SourceGeneratorGolang) generateSourceEntityFileSetterCode(table *dto
 		code += fmt.Sprintf("\te.%s = utils.ToString(%s)\n\treturn nil\n}\n\n", cnp, cnc)
 
 	case "int64":
-		code += fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+		code += fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
 			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
 
 	case "float64":
-		code += fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+		code += fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
 			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
 			
 	case "sql.NullString":
@@ -524,13 +538,13 @@ func (serv *SourceGeneratorGolang) generateSourceEntityFileSetterCode(table *dto
 	case "sql.NullInt64":
 		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
 			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
-			fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
 			fmt.Sprintf("\te.%s.Int64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
 
 	case "sql.NullFloat64":
 		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
 			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
-			fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnp) +
+			fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
 			fmt.Sprintf("\te.%s.Float64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
 	}
 
@@ -949,7 +963,7 @@ func (serv *SourceGeneratorGolang) generateSourceTemplateFileHeader(path string)
 
 func (serv *SourceGeneratorGolang) generateSourceTemplateFileFooter(path string) error {
 	content := GenerateHtmlCodeFooter()
-	code := `{{define "header"}}` + content + `{{end}}`
+	code := `{{define "footer"}}` + content + `{{end}}`
 	return WriteFile(path + "_footer.html", code)
 }
 
