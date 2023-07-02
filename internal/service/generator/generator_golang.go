@@ -860,12 +860,11 @@ func (serv *SourceGeneratorGolang) generateSourceWeb() error {
 		logger.LogError(err.Error())
 		return err
 	}
-/*
 	if err := serv.generateSourceTemplate(); err != nil {
 		logger.LogError(err.Error())
 		return err
 	}
-*/
+
 	return nil
 }
 
@@ -900,7 +899,8 @@ func (serv *SourceGeneratorGolang) generateSourceJs() error {
 
 func (serv *SourceGeneratorGolang) generateSourceJsFiles(path string) error {
 	for _, table := range *serv.tables {
-		if err := serv.generateSourceJsFile(&table, path); err != nil {
+		code := GenerateJsCode(&table)
+		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
 			logger.LogError(err.Error())
 			return err
 		}
@@ -908,7 +908,59 @@ func (serv *SourceGeneratorGolang) generateSourceJsFiles(path string) error {
 	return nil
 }
 
-func (serv *SourceGeneratorGolang) generateSourceJsFile(table *dto.Table, path string) error {
-	code := GenerateJsCode(table)
-	return WriteFile(fmt.Sprintf("%s%s.go", path, table.TableName), code)
+func (serv *SourceGeneratorGolang) generateSourceTemplate() error {
+	path := serv.path + "web/template/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateSourceTemplateFiles(path)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceTemplateFiles(path string) error {
+	if err := serv.generateSourceTemplateFileHeader(path); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+	if err := serv.generateSourceTemplateFileFooter(path); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+	if err := serv.generateSourceTemplateFileIndex(path); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+	for _, table := range *serv.tables {
+		if err := serv.generateSourceTemplateFile(&table, path); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
+func (serv *SourceGeneratorGolang) generateSourceTemplateFileHeader(path string) error {
+	content := GenerateHtmlCodeHeader(serv.tables)
+	code := `{{define "header"}}` + content + `{{end}}`
+	return WriteFile(path + "_header.html", code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceTemplateFileFooter(path string) error {
+	content := GenerateHtmlCodeFooter()
+	code := `{{define "header"}}` + content + `{{end}}`
+	return WriteFile(path + "_footer.html", code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceTemplateFileIndex(path string) error {
+	content := "\n"
+	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
+	return WriteFile(path + "index.html", code)
+}
+
+func (serv *SourceGeneratorGolang) generateSourceTemplateFile(table *dto.Table, path string) error {
+	content := GenerateHtmlCode(table)
+	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
+	return WriteFile(fmt.Sprintf("%s%s.html", path, table.TableName), code)
 }
