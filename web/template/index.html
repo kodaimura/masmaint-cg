@@ -1,7 +1,29 @@
 {{template "header" .}}
-<input type="file" id="csv">
-<input type="button" value="自動生成" id="generate">
-<div id="message">
+<div class="row">
+	<div class="col-4">
+		<label for="lang">言語</label>
+		<select class="form-select" id="lang">
+			<option value="golang" selected>Golang (Gin)</option>
+		</select>
+	</div>
+	<div class="col-4">
+		<label for="rdbms">RDBMS</label>
+		<select class="form-select" id="rdbms">
+			<option value="postgresql" selected>PostgreSQL</option>
+		</select>
+	</div>
 </div>
+
+<div class="row align-items-center mt-3">
+	<div class="col-8">
+		<div class="input-group mb-3">
+			<input type="file" class="form-control" id="csv" accept=".csv" >
+		</div>
+	</div>
+	<div class="col-auto align-self-start">
+		<button type="button" class="btn btn-primary" id="generate">自動生成</button>
+	</div>
+</div>
+<div id="message" class="overflow-auto" style="max-height: 50vh;"></div>
 <script type="text/javascript" src="/js/index.js"></script>
 {{template "footer" .}}

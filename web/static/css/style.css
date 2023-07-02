@@ -4,3 +4,10 @@ footer{
     position: absolute;
     bottom: 0;
 }
+
+.alert-custom {
+    padding-left: 20px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+}
