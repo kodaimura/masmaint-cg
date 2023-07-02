@@ -33,7 +33,7 @@ func GenerateJsCode(table *dto.Table) string {
 }
 
 // HTMLコード生成
-func GenerateHtmlCode(table *dto.Table) string {
+func GenerateHtmlCodeMain(table *dto.Table) string {
 	return fmt.Sprintf(
 		HTML_FORMAT,
 		generateHtmlCode_h2(table),

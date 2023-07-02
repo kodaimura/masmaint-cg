@@ -35,6 +35,9 @@ func (ctr *rootController) indexPage(c *gin.Context) {
 //POST /csv
 func (ctr *rootController) postCsv(c *gin.Context) {
 	file, _ := c.FormFile("file")
+	lang := c.PostForm("lang")
+	rdbms := c.PostForm("rdbms")
+
 	randStr := utils.RandomString(10)
 	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".csv"
 	c.SaveUploadedFile(file, path)
@@ -47,7 +50,7 @@ func (ctr *rootController) postCsv(c *gin.Context) {
 		return
 	}
 
-	zipPath, err := ctr.genServ.Generate(&tables, "golang", "postgresql")
+	zipPath, err := ctr.genServ.Generate(&tables, lang, rdbms)
 
 	if err != nil {
 		c.JSON(500, gin.H{"errors":errors})
