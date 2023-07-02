@@ -123,29 +123,44 @@ func (serv *SourceGeneratorGolang) generateControllerFiles(path string) error {
 	return nil
 }
 
-func (serv *SourceGeneratorGolang) generateControllerFileRouter(path string) error {
-	code := "package controller\n\nimport (\n" +
-		"\t\"github.com/gin-gonic/gin\"\n\n\t\"masmaint/core/auth\"\n)\n\n\n" +
-		"func SetRouter(r *gin.Engine) {\n\n" +
-		"\trm := r.Group(\"/mastertables\", auth.NoopAuthMiddleware())\n" +
-		"\t{\n\t\trm.GET(\"/\", func(c *gin.Context) {\n" +
-		"\t\t\tc.HTML(200, \"index.html\", gin.H{})\n\t\t})\n\n" 
+const GO_CONTROLLER_ROUTER_FORMAT =
+`
+package controller
 
+import (
+	"github.com/gin-gonic/gin"
+
+	"masmaint/core/auth"
+)
+
+
+func SetRouter(r *gin.Engine) {
+
+	rm := r.Group("/mastertables", auth.NoopAuthMiddleware())
+	{
+		rm.GET("/", func(c *gin.Context) {
+			c.HTML(200, "index.html", gin.H{})
+		})
+		%s
+	}
+}
+`
+func (serv *SourceGeneratorGolang) generateControllerFileRouter(path string) error {
+	code := ""
 	for _, table := range *serv.tables {
 		tn := table.TableName
 		tnc := SnakeToCamel(tn)
 		tnp := SnakeToPascal(tn)
 
-		code += fmt.Sprintf("\t\t%sController := New%sController()\n", tnc, tnp) + 
-			fmt.Sprintf("\t\trm.GET(\"/%s\", %sController.Get%sPage)\n", tn, tnc, tnp) +
-			fmt.Sprintf("\t\trm.GET(\"/api/%s\", %sController.Get%s)\n", tn, tnc, tnp) +
-			fmt.Sprintf("\t\trm.POST(\"/api/%s\", %sController.Post%s)\n", tn, tnc, tnp) +
-			fmt.Sprintf("\t\trm.PUT(\"/api/%s\", %sController.Put%s)\n", tn, tnc, tnp) +
-			fmt.Sprintf("\t\trm.DELETE(\"/api/%s\", %sController.Delete%s)\n", tn, tnc, tnp) + 
-			"\n"
+		code += fmt.Sprintf("\n\t\t%sController := New%sController()", tnc, tnp) + 
+			fmt.Sprintf("\n\t\trm.GET(\"/%s\", %sController.Get%sPage)", tn, tnc, tnp) +
+			fmt.Sprintf("\n\t\trm.GET(\"/api/%s\", %sController.Get%s)", tn, tnc, tnp) +
+			fmt.Sprintf("\n\t\trm.POST(\"/api/%s\", %sController.Post%s)", tn, tnc, tnp) +
+			fmt.Sprintf("\n\t\trm.PUT(\"/api/%s\", %sController.Put%s)", tn, tnc, tnp) +
+			fmt.Sprintf("\n\t\trm.DELETE(\"/api/%s\", %sController.Delete%s)\n", tn, tnc, tnp)
 	}
 
-	code += "\t}\n}"
+	code = fmt.Sprintf(GO_CONTROLLER_ROUTER_FORMAT, code)
 
 	err := WriteFile(path + "router.go", code)
 	if err != nil {
@@ -178,36 +193,72 @@ func (serv *SourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 		fmt.Sprintf("\treturn &%sController{%sServ}\n", tnp, tni) +
 		"}\n\n\n"
 
-	code += fmt.Sprintf("//GET /%s\n", tn) +
+	code += serv.generateControllerFileCodeGetPage(table) + "\n\n"
+	code += serv.generateControllerFileCodeGet(table) + "\n\n"
+	code += serv.generateControllerFileCodePost(table) + "\n\n"
+	code += serv.generateControllerFileCodePut(table) + "\n\n"
+	code += serv.generateControllerFileCodeDelete(table)
+
+	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+func (serv *SourceGeneratorGolang) generateControllerFileCodeGetPage(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	return fmt.Sprintf("//GET /%s\n", tn) +
 		fmt.Sprintf("func (ctr *%sController) Get%sPage(c *gin.Context) {\n", tnp, tnp) +
 		fmt.Sprintf("\tc.HTML(200, \"%s.html\", gin.H{})\n", tn) +
-		"}\n\n"
+		"}\n"
+}
 
-	code += fmt.Sprintf("//GET /api/%s\n", tn) +
+func (serv *SourceGeneratorGolang) generateControllerFileCodeGet(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	return fmt.Sprintf("//GET /api/%s\n", tn) +
 		fmt.Sprintf("func (ctr *%sController) Get%s(c *gin.Context) {\n", tnp, tnp) +
 		fmt.Sprintf("\tret, err := ctr.%sServ.GetAll()\n\n", tni) +
 		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n\n"
+		"\tc.JSON(200, ret)\n}\n"
+}
 
-	code += fmt.Sprintf("//POST /api/%s\n", tn) +
+func (serv *SourceGeneratorGolang) generateControllerFileCodePost(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	return fmt.Sprintf("//POST /api/%s\n", tn) +
 		fmt.Sprintf("func (ctr *%sController) Post%s(c *gin.Context) {\n", tnp, tnp) +
 		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) + 
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tret, err := ctr.%sServ.Create(&%sDto)\n\n", tni, tni) +
 		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n\n"
+		"\tc.JSON(200, ret)\n}\n"
+}
 
-	code += fmt.Sprintf("//PUT /api/%s\n", tn) +
+func (serv *SourceGeneratorGolang) generateControllerFileCodePut(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	return fmt.Sprintf("//PUT /api/%s\n", tn) +
 		fmt.Sprintf("func (ctr *%sController) Put%s(c *gin.Context) {\n", tnp, tnp) +
 		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) + 
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tret, err := ctr.%sServ.Update(&%sDto)\n\n", tni, tni) +
 		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n\n"
+		"\tc.JSON(200, ret)\n}\n"
+}
 
-	code += fmt.Sprintf("//DELETE /api/%s\n", tn) +
+func (serv *SourceGeneratorGolang) generateControllerFileCodeDelete(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	return fmt.Sprintf("//DELETE /api/%s\n", tn) +
 		fmt.Sprintf("func (ctr *%sController) Delete%s(c *gin.Context) {\n", tnp, tnp) +
 		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
@@ -215,12 +266,6 @@ func (serv *SourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 		fmt.Sprintf("\tif err := ctr.%sServ.Delete(&%sDto); err != nil {\n", tni, tni) +
 		"\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, gin.H{})\n}\n"
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
-	if err != nil {
-		logger.LogError(err.Error())
-	}
-	return err
 }
 
 func (serv *SourceGeneratorGolang) generateDto() error {
@@ -309,17 +354,39 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 		fmt.Sprintf("\treturn &%sService{%sDao}\n", tnp, tni) +
 		"}\n\n\n"
 
-	// *Service.GetAll()
-	code += fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnp, tnp) +
+	code += serv.generateServiceFileCodeGetAll(table) + "\n\n"
+	code += serv.generateServiceFileCodeGetOne(table) + "\n\n"
+	code += serv.generateServiceFileCodeCreate(table) + "\n\n"
+	code += serv.generateServiceFileCodeUpdate(table) + "\n\n"
+	code += serv.generateServiceFileCodeDelete(table)
+
+	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+func (serv *SourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	return fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnp, tnp) +
 		fmt.Sprintf("\trows, err := serv.%sDao.SelectAll()\n", tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		fmt.Sprintf("\t\treturn []dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
 		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
-		"\treturn ret, nil\n}\n\n\n"
+		"\treturn ret, nil\n}\n"
+}
 
-	// *Service.GetOne()
-	code += fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+func (serv *SourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	code := fmt.Sprintf("func (serv *%sService) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
 		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
 	isFirst := true
@@ -337,18 +404,24 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	}
 	code += "{\n"
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
-
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Select(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n\n\n"
+		"}\n"
 
-	// *Service.Create()
-	code += fmt.Sprintf("func (serv *%sService) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	code := fmt.Sprintf("func (serv *%sService) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
 		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
-	isFirst = true
+	isFirst := true
 	for _, col := range table.Columns {
 		if col.IsInsAble {
 			cnp := SnakeToPascal(col.ColumnName)
@@ -368,13 +441,20 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n\n\n"
+		"}\n"
 
-	// *Service.Update()
-	code += fmt.Sprintf("func (serv *%sService) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	code := fmt.Sprintf("func (serv *%sService) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnp, tni, tnp, tnp) +
 		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
-	isFirst = true
+	isFirst := true
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey || col.IsUpdAble {
 			cnp := SnakeToPascal(col.ColumnName)
@@ -389,18 +469,24 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	}
 	code += "{\n"
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
-
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Update(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n\n\n"
+		"}\n"
 
-	// *Service.Delete()
-	code += fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) error {\n", tnp, tni, tnp) +
+	return code
+}
+
+func (serv *SourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Table) string {
+	tn := table.TableName
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	code := fmt.Sprintf("func (serv *%sService) Delete(%sDto *dto.%sDto) error {\n", tnp, tni, tnp) +
 		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
 	
-	isFirst = true
+	isFirst := true
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey {
 			cnp := SnakeToPascal(col.ColumnName)
@@ -415,17 +501,12 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	}
 	code += "{\n"
 	code += "\t\treturn errors.New(\"不正な値があります。\")\n\t}\n\n"
-
 	code += fmt.Sprintf("\terr := serv.%sDao.Delete(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
 		"\t\treturn errors.New(\"削除に失敗しました。\")\n\t}\n\n" +
-		"\treturn nil\n}\n\n"
+		"\treturn nil\n}\n"
 
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
-	if err != nil {
-		logger.LogError(err.Error())
-	}
-	return err
+	return code
 }
 
 func (serv *SourceGeneratorGolang) generateModel() error {
@@ -497,7 +578,8 @@ func (serv *SourceGeneratorGolang) generateEntityFile(table *dto.Table, path str
 		code += fmt.Sprintf("\t%s %s `db:\"%s\"`\n", cnp, serv.getEntityFieldType(&col), cn)
 	}
 	code += "}\n\n"
-	code += serv.generateEntityFileCodeSetters(table)
+	code += serv.generateEntityFileCodeSetters(table) + "\n"
+	code += serv.generateEntityFileCodeToDto(table)
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
@@ -513,9 +595,6 @@ func (serv *SourceGeneratorGolang) generateEntityFileCodeSetters(table *dto.Tabl
 	for _, col := range table.Columns {
 		code += serv.generateEntityFileCodeSetter(table, &col)
 	}
-
-	code += "\n"
-	code += serv.generateEntityFileCodeToDto(table)
 	
 	return code
 }
@@ -631,7 +710,7 @@ func (serv *SourceGeneratorGolang) generateDaoFile(table *dto.Table, path string
 	code += serv.generateDaoFileCodeSelect(table) + "\n\n"
 	code += serv.generateDaoFileCodeInsert(table) + "\n\n"
 	code += serv.generateDaoFileCodeUpdate(table) + "\n\n"
-	code += serv.generateDaoFileCodeDelete(table) + "\n"
+	code += serv.generateDaoFileCodeDelete(table)
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
