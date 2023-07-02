@@ -101,6 +101,8 @@ func (serv *CsvParseService) isStartWithTableLabel(records [][]string) bool {
 
 func (serv *CsvParseService) validate(records [][]string) []string {
 	var errs []string
+	tname := ""
+	hasPk := true
 
 	if !serv.isStartWithTableLabel(records) {
 		errs = append(errs, "最初のテーブル定義無し")
@@ -116,7 +118,13 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 			if !serv.isValidTableName(row[1]) {
 				errs = append(errs, fmt.Sprintf("%d行目: テーブル名不正[%s]", i, row[1]))
 			}
+			if !hasPk {
+				errs = append(errs, fmt.Sprintf("主キー無しテーブル[%s]", tname))
+			} 
+			tname = row[1]
+			hasPk = false
 		}
+		
 		if serv.isValidColumnLabel(row[0]) {
 			if len(row) < 7 {
 				errs = append(errs, fmt.Sprintf("%d行目: 要素数不足", i))
@@ -143,6 +151,9 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 			if row[3] == "1" && row[6] != "0" {
 				errs = append(errs, fmt.Sprintf("%d行目: 主キーフラグが1の時、更新可能フラグは0", i))
 			} 
+			if row[3] == "1" {
+				hasPk = true
+			}
 		}
 	}
 	return errs
