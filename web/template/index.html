@@ -1,6 +1,7 @@
 {{template "header" .}}
-<form method="post" enctype="multipart/form-data">
-	<input type="file" name="ddl">
-	<input type="submit">
-</form>
+<input type="file" id="csv">
+<input type="button" value="自動生成" id="generate">
+<div id="message">
+</div>
+<script type="text/javascript" src="/js/index.js"></script>
 {{template "footer" .}}

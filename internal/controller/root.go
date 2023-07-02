@@ -34,7 +34,7 @@ func (ctr *rootController) indexPage(c *gin.Context) {
 
 //POST /
 func (ctr *rootController) postDdl(c *gin.Context) {
-	file, _ := c.FormFile("ddl")
+	file, _ := c.FormFile("file")
 	randStr := utils.RandomString(10)
 	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".csv"
 	c.SaveUploadedFile(file, path)
@@ -42,7 +42,7 @@ func (ctr *rootController) postDdl(c *gin.Context) {
 	tables, errors := ctr.cpServ.Parse(path)
 
 	if len(errors) != 0 {
-		c.HTML(400, "index.html", gin.H{})
+		c.JSON(400, gin.H{"errors":errors})
 		c.Abort()
 		return
 	}
@@ -50,10 +50,10 @@ func (ctr *rootController) postDdl(c *gin.Context) {
 	zipPath, err := ctr.genServ.Generate(&tables, "golang", "postgresql")
 
 	if err != nil {
-		c.HTML(500, "index.html", gin.H{})
+		c.JSON(500, gin.H{"errors":errors})
 		c.Abort()
 		return
 	}
 	 
-	c.HTML(200, "index.html", gin.H{path: zipPath})
+	c.JSON(200, gin.H{"path": zipPath})
 }

@@ -24,6 +24,7 @@ func router() *gin.Engine {
 	//STATIC
 	r.Static("/css", "web/static/css")
 	r.Static("/js", "web/static/js")
+	r.Static("/tmp", "./tmp")
 
 	controller.SetRouter(r)
 
