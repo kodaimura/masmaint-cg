@@ -1,4 +1,13 @@
 {{template "header" .}}
+<a href="sample/csv_sample.csv" style="text-decoration: none;"　download>CSVサンプル</a>&nbsp;&nbsp;&nbsp;
+<a href="sample/ddl_sample.sql" style="text-decoration: none;"　download>DDLサンプル(PostgreSQL)</a>
+<ol>
+	<li>テーブル定義に沿ってCSVを用意</li>
+	<li>言語・RDBMS・CSVを選択し、自動生成</li>
+	<li>生成されたプログラムにDB接続設定を記載</li>
+	<li>実行</li>
+	<li>localhost:3000/mastertables にアクセス</li>
+</ol>
 <div class="row">
 	<div class="col-4">
 		<label for="lang">言語</label>
@@ -16,8 +25,8 @@
 
 <div class="row align-items-center mt-3">
 	<div class="col-8">
-		<div class="input-group mb-3">
-			<input type="file" class="form-control" id="csv" accept=".csv" >
+		<div class="input-group mb-1">
+			<input type="file" class="form-control" id="csv" accept=".csv">
 		</div>
 	</div>
 	<div class="col-auto align-self-start">
