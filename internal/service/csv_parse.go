@@ -105,57 +105,63 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 	hasPk := true
 
 	if !serv.isStartWithTableLabel(records) {
-		errs = append(errs, "最初のテーブル定義無し")
+		errs = append(errs, "最初のテーブルが見つかりません。")
 	}
 
-	for i, row := range records {
+	for index, row := range records {
+		i := index + 1 //エラーメッセージ用
 
 		if serv.isValidTableLabel(row[0]) {
 			if len(row) < 3 {
-				errs = append(errs, fmt.Sprintf("%d行目: 要素数不足", i))
+				errs = append(errs, fmt.Sprintf("%d行: 要素が不足しています。", i))
 				continue
 			}
 			if !serv.isValidTableName(row[1]) {
-				errs = append(errs, fmt.Sprintf("%d行目: テーブル名不正[%s]", i, row[1]))
+				errs = append(errs, fmt.Sprintf("%d行2列: テーブル名が不正です。[%s]", i, row[1]))
 			}
 			if !hasPk {
-				errs = append(errs, fmt.Sprintf("主キー無しテーブル[%s]", tname))
+				errs = append(errs, fmt.Sprintf("主キーの無いテーブルは取り込めません。[%s]", tname))
 			} 
 			tname = row[1]
 			hasPk = false
 		}
-		
+
 		if serv.isValidColumnLabel(row[0]) {
 			if len(row) < 7 {
-				errs = append(errs, fmt.Sprintf("%d行目: 要素数不足", i))
+				errs = append(errs, fmt.Sprintf("%d行目: 要素が不足しています。", i))
 				continue
 			}
 			if !serv.isValidColumnName(row[1]) {
-				errs = append(errs, fmt.Sprintf("%d行目: カラム名不正[%s]", i, row[1]))
+				errs = append(errs, fmt.Sprintf("%d行2列: カラム名が不正です。[%s]", i, row[1]))
 			}
 			if !serv.isValidColumnType(row[2]) {
-				errs = append(errs, fmt.Sprintf("%d行目: カラムデータ型不正[%s]", i, row[2]))
+				errs = append(errs, fmt.Sprintf("%d行3列: データ型は I, F, S, T のいずれかとしてください。[%s]", i, row[2]))
 			}
 			if !serv.isValidFlg(row[3]) {
-				errs = append(errs, fmt.Sprintf("%d行目: 主キーフラグ不正[%s]", i, row[3]))
+				errs = append(errs, fmt.Sprintf("%d行4列: 主キーフラグは 0 または 1 としてください。[%s]", i, row[3]))
 			}
 			if !serv.isValidFlg(row[4]) {
-				errs = append(errs, fmt.Sprintf("%d行目: NotNull制約フラグ不正[%s]", i, row[4]))
+				errs = append(errs, fmt.Sprintf("%d行5列: NotNull制約フラグは 0 または 1 としてください。[%s]", i, row[4]))
 			}
 			if !serv.isValidFlg(row[5]) {
-				errs = append(errs, fmt.Sprintf("%d行目: 登録可能フラグ不正[%s]", i, row[5]))
+				errs = append(errs, fmt.Sprintf("%d行6列: 登録可能フラグは 0 または 1 としてください。[%s]", i, row[5]))
 			}
 			if !serv.isValidFlg(row[6]) {
-				errs = append(errs, fmt.Sprintf("%d行目: 更新可能フラグ不正[%s]", i, row[6]))
+				errs = append(errs, fmt.Sprintf("%d行7列: 更新可能フラグは 0 または 1 としてください。[%s]", i, row[6]))
 			}
 			if row[3] == "1" && row[6] != "0" {
-				errs = append(errs, fmt.Sprintf("%d行目: 主キーフラグが1の時、更新可能フラグは0", i))
+				errs = append(errs, fmt.Sprintf("%d行7列: 主キーのカラムは更新不可 0 としてください。", i))
 			} 
 			if row[3] == "1" {
 				hasPk = true
 			}
 		}
 	}
+
+	if !hasPk {
+		errs = append(errs, fmt.Sprintf("主キーの無いテーブルは取り込めません。[%s]", tname))
+	} 
+
 	return errs
 }
 

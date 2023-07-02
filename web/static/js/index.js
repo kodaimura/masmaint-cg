@@ -1,6 +1,7 @@
 document.getElementById('generate').addEventListener('click', () => {
-	const file = document.getElementById('csv').files[0]
+	document.getElementById('message').innerHTML = ''
 
+	const file = document.getElementById('csv').files[0]
 	const formData = new FormData();
 	formData.append('file', file);
 
@@ -26,11 +27,20 @@ const download = (path) => {
 	alink.download = path.substring(2);
 	alink.href = path;
 	alink.click();
+	document.getElementById('csv').value = ''
+	renderMessage(`${path.substring(2).replace('/', '_')} がダウンロードされました。`, true)
 }
 
 const handleErrors = (errors) => {
 	console.log(errors)
-	document.getElementById('message').innerHTML = errors 
+	for (err of errors) {
+		renderMessage(err, false)
+	}
 }
 
-
+const renderMessage = (msg, isSuccess) => {
+	let message = document.createElement('div');
+	message.textContent = msg
+	message.className = `alert alert-${isSuccess? 'success' : 'danger'} alert-custom my-1`;
+	document.getElementById('message').appendChild(message);
+}
