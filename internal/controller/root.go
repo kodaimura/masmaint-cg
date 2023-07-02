@@ -32,8 +32,8 @@ func (ctr *rootController) indexPage(c *gin.Context) {
 	c.HTML(200, "index.html", gin.H{})
 }
 
-//POST /
-func (ctr *rootController) postDdl(c *gin.Context) {
+//POST /csv
+func (ctr *rootController) postCsv(c *gin.Context) {
 	file, _ := c.FormFile("file")
 	randStr := utils.RandomString(10)
 	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".csv"

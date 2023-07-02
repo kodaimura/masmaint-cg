@@ -4,7 +4,7 @@ document.getElementById('generate').addEventListener('click', () => {
 	const formData = new FormData();
 	formData.append('file', file);
 
-	fetch('', {
+	fetch('/csv', {
 		method: 'POST',
 		body: formData
 	})
@@ -23,7 +23,7 @@ document.getElementById('generate').addEventListener('click', () => {
 
 const download = (path) => {
 	let alink = document.createElement('a');
-	alink.download = path.substring(5);
+	alink.download = path.substring(2);
 	alink.href = path;
 	alink.click();
 }

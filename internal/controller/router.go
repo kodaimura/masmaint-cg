@@ -11,5 +11,5 @@ func SetRouter(r *gin.Engine) {
 	rc := newRootController()
 		
 	r.GET("/", rc.indexPage)
-	r.POST("/", rc.postDdl)
+	r.POST("/csv", rc.postCsv)
 }

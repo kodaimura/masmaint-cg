@@ -33,7 +33,7 @@ func (serv *GenerateService) Generate(tables *[]dto.Table, lang, rdbms string) (
 	}
 
 	pathZip := path + ".zip"
-	if err := exec.Command("zip", "-r", pathZip, path).Run(); err != nil {
+	if err := exec.Command("zip", "-rm", pathZip, path).Run(); err != nil {
 		logger.LogError(err.Error())
 		return "", err
 	}
@@ -43,7 +43,7 @@ func (serv *GenerateService) Generate(tables *[]dto.Table, lang, rdbms string) (
 
 
 func (serv *GenerateService) generateSourcePath() string {
-	return "./tmp/masmaint-" + time.Now().Format("2006-01-02-15-04-05") + 
+	return "./output/masmaint-" + time.Now().Format("2006-01-02-15-04-05") + 
 		"-" + utils.RandomString(10)
 }
 
