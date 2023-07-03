@@ -53,7 +53,7 @@ func (ctr *rootController) postCsv(c *gin.Context) {
 	zipPath, err := ctr.genServ.Generate(&tables, lang, rdbms)
 
 	if err != nil {
-		c.JSON(500, gin.H{"errors":errors})
+		c.JSON(500, gin.H{"errors":[]string{"生成に失敗しました。"}})
 		c.Abort()
 		return
 	}

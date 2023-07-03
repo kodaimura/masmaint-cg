@@ -51,6 +51,12 @@ func (serv *GenerateService) generateSourcePath() string {
 func (serv *GenerateService) generateSource(tables *[]dto.Table, lang, rdbms, path string) error {
 	var sg SourceGenerator
 
+	if !(rdbms == constant.POSTGRESQL ||
+		rdbms == constant.MYSQL ||
+		rdbms == constant.SQLITE3) {
+		return errors.New("未対応RDBMS");
+	}
+
 	if lang == constant.GOLANG {
 		sg = generator.NewSourceGeneratorGolang(tables, rdbms, path + "/masmaint/")
 	} else {

@@ -7,6 +7,7 @@ import (
 
 	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
+	"masmaint-cg/internal/shared/constant"
 )
 
 
@@ -86,6 +87,19 @@ func (serv *SourceGeneratorGolang) generateCore() error {
 	destination := serv.path + "core/"
 	
 	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+	return serv.generateDb()
+}
+
+// db生成
+func (serv *SourceGeneratorGolang) generateDb() error {
+	source := fmt.Sprintf("_originalcopy_/golang/core-sub/db/%s.go", serv.rdbms)
+	destination := serv.path + fmt.Sprintf("core/db/%s.go", serv.rdbms)
+
+	err := CopyFile(source, destination)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -767,6 +781,15 @@ func (serv *SourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column)
 }
 
 
+func (serv *SourceGeneratorGolang) getBindVariable(n int) string {
+	if serv.rdbms == constant.POSTGRESQL {
+		return fmt.Sprintf("$%d", n)
+	} else {
+		return "?"
+	}
+}
+
+
 func (serv *SourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -820,9 +843,9 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) s
 		if col.IsPrimaryKey {
 			bindCount += 1
 			if bindCount == 1 {
-				code += fmt.Sprintf("%s = $1", col.ColumnName)
+				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			}
 		}
 	}
@@ -848,7 +871,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) s
 func (serv *SourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
-		ls = append(ls, fmt.Sprintf("$%d", i))
+		ls = append(ls, serv.getBindVariable(i))
 	}
 	return strings.Join(ls, ",")
 }
@@ -899,7 +922,6 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) s
 	return code
 }
 
-
 func (serv *SourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -913,9 +935,9 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 		if col.IsUpdAble {
 			bindCount += 1
 			if bindCount == 1 {
-				code += fmt.Sprintf("\t\t\t%s = $1", col.ColumnName)
+				code += fmt.Sprintf("\t\t\t%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			} else {
-				code += fmt.Sprintf("\n\t\t\t,%s = $%d", col.ColumnName, bindCount)
+				code += fmt.Sprintf("\n\t\t\t,%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			}
 		}
 	}
@@ -926,10 +948,10 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 		if col.IsPrimaryKey {
 			bindCount += 1
 			if isFirst {
-				code += fmt.Sprintf("%s = $%d", col.ColumnName, bindCount)
+				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 				isFirst = false
 			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			}
 		}
 	}
@@ -980,9 +1002,9 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) s
 		if col.IsPrimaryKey {
 			bindCount += 1
 			if bindCount == 1 {
-				code += fmt.Sprintf("%s = $1", col.ColumnName)
+				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = $%d", col.ColumnName, bindCount)
+				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
 			}
 		}
 	}
