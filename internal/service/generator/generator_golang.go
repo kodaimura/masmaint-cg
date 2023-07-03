@@ -22,6 +22,7 @@ func NewSourceGeneratorGolang(tables *[]dto.Table, rdbms, path string) *SourceGe
 	}
 }
 
+// Goソース生成
 func (serv *SourceGeneratorGolang) GenerateSource() error {
 
 	if err := serv.generateCmd(); err != nil {
@@ -55,6 +56,7 @@ func (serv *SourceGeneratorGolang) GenerateSource() error {
 	return nil	
 }
 
+// cmd生成
 func (serv *SourceGeneratorGolang) generateCmd() error {
 	source := "_originalcopy_/golang/cmd"
 	destination := serv.path + "cmd/"
@@ -66,6 +68,7 @@ func (serv *SourceGeneratorGolang) generateCmd() error {
 	return err
 }
 
+// config生成
 func (serv *SourceGeneratorGolang) generateConfig() error {
 	source := "_originalcopy_/golang/config"
 	destination := serv.path + "config/"
@@ -77,6 +80,7 @@ func (serv *SourceGeneratorGolang) generateConfig() error {
 	return err
 }
 
+// core生成
 func (serv *SourceGeneratorGolang) generateCore() error {
 	source := "_originalcopy_/golang/core"
 	destination := serv.path + "core/"
@@ -88,6 +92,7 @@ func (serv *SourceGeneratorGolang) generateCore() error {
 	return err
 }
 
+// log生成
 func (serv *SourceGeneratorGolang) generateLog() error {
 	source := "_originalcopy_/golang/log"
 	destination := serv.path + "log/"
@@ -99,6 +104,7 @@ func (serv *SourceGeneratorGolang) generateLog() error {
 	return err
 }
 
+// controller生成
 func (serv *SourceGeneratorGolang) generateController() error {
 	path := serv.path + "controller/"
 
@@ -109,6 +115,7 @@ func (serv *SourceGeneratorGolang) generateController() error {
 
 	return serv.generateControllerFiles(path)
 }
+
 
 func (serv *SourceGeneratorGolang) generateControllerFiles(path string) error {
 	if err := serv.generateControllerFileRouter(path); err != nil {
@@ -169,6 +176,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileRouter(path string) err
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) generateControllerFile(table *dto.Table, path string) error {
 	code := "package controller\n\nimport (\n" +
 		"\t\"github.com/gin-gonic/gin\"\n\n\t\"masmaint/service\"\n\t\"masmaint/dto\"\n)\n\n\n"
@@ -206,6 +214,7 @@ func (serv *SourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) generateControllerFileCodeGetPage(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -214,6 +223,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileCodeGetPage(table *dto.
 		fmt.Sprintf("\tc.HTML(200, \"%s.html\", gin.H{})\n", tn) +
 		"}\n"
 }
+
 
 func (serv *SourceGeneratorGolang) generateControllerFileCodeGet(table *dto.Table) string {
 	tn := table.TableName
@@ -225,6 +235,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileCodeGet(table *dto.Tabl
 		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, ret)\n}\n"
 }
+
 
 func (serv *SourceGeneratorGolang) generateControllerFileCodePost(table *dto.Table) string {
 	tn := table.TableName
@@ -240,6 +251,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileCodePost(table *dto.Tab
 		"\tc.JSON(200, ret)\n}\n"
 }
 
+
 func (serv *SourceGeneratorGolang) generateControllerFileCodePut(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -253,6 +265,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileCodePut(table *dto.Tabl
 		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, ret)\n}\n"
 }
+
 
 func (serv *SourceGeneratorGolang) generateControllerFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
@@ -268,6 +281,7 @@ func (serv *SourceGeneratorGolang) generateControllerFileCodeDelete(table *dto.T
 		"\tc.JSON(200, gin.H{})\n}\n"
 }
 
+// dto生成
 func (serv *SourceGeneratorGolang) generateDto() error {
 	path := serv.path + "dto/"
 
@@ -279,6 +293,7 @@ func (serv *SourceGeneratorGolang) generateDto() error {
 	return serv.generateDtoFiles(path)
 }
 
+
 func (serv *SourceGeneratorGolang) generateDtoFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateDtoFile(&table, path); err != nil {
@@ -287,6 +302,7 @@ func (serv *SourceGeneratorGolang) generateDtoFiles(path string) error {
 	}
 	return nil
 }
+
 
 func (serv *SourceGeneratorGolang) generateDtoFile(table *dto.Table, path string) error {
 	tn := table.TableName
@@ -308,6 +324,7 @@ func (serv *SourceGeneratorGolang) generateDtoFile(table *dto.Table, path string
 	return err
 }
 
+// service生成
 func (serv *SourceGeneratorGolang) generateService() error {
 	path := serv.path + "service/"
 
@@ -319,6 +336,7 @@ func (serv *SourceGeneratorGolang) generateService() error {
 	return serv.generateServiceFiles(path)
 }
 
+
 func (serv *SourceGeneratorGolang) generateServiceFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateServiceFile(&table, path); err != nil {
@@ -327,6 +345,7 @@ func (serv *SourceGeneratorGolang) generateServiceFiles(path string) error {
 	}
 	return nil
 }
+
 
 func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path string) error {
 	code := "package service\n\nimport (\n" +
@@ -367,6 +386,7 @@ func (serv *SourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -380,6 +400,7 @@ func (serv *SourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Tabl
 		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
 		"\treturn ret, nil\n}\n"
 }
+
 
 func (serv *SourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Table) string {
 	tn := table.TableName
@@ -412,6 +433,7 @@ func (serv *SourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Tabl
 
 	return code
 }
+
 
 func (serv *SourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Table) string {
 	tn := table.TableName
@@ -446,6 +468,7 @@ func (serv *SourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Tabl
 	return code
 }
 
+
 func (serv *SourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -478,6 +501,7 @@ func (serv *SourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Tabl
 	return code
 }
 
+
 func (serv *SourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -509,6 +533,7 @@ func (serv *SourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Tabl
 	return code
 }
 
+// model生成
 func (serv *SourceGeneratorGolang) generateModel() error {
 	if err := serv.generateEntity(); err != nil {
 		return err
@@ -521,6 +546,7 @@ func (serv *SourceGeneratorGolang) generateModel() error {
 	return nil
 }
 
+// entity生成
 func (serv *SourceGeneratorGolang) generateEntity() error {
 	path := serv.path + "model/entity/"
 
@@ -532,6 +558,7 @@ func (serv *SourceGeneratorGolang) generateEntity() error {
 	return serv.generateEntityFiles(path)
 }
 
+
 func (serv *SourceGeneratorGolang) generateEntityFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateEntityFile(&table, path); err != nil {
@@ -540,6 +567,7 @@ func (serv *SourceGeneratorGolang) generateEntityFiles(path string) error {
 	}
 	return nil
 }
+
 
 func (serv *SourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	isNotNull := col.IsNotNull
@@ -565,6 +593,7 @@ func (serv *SourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	return ""
 }
 
+
 func (serv *SourceGeneratorGolang) generateEntityFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -588,6 +617,7 @@ func (serv *SourceGeneratorGolang) generateEntityFile(table *dto.Table, path str
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) generateEntityFileCodeSetters(table *dto.Table) string {
 	tnp := SnakeToPascal(table.TableName)
 
@@ -598,6 +628,7 @@ func (serv *SourceGeneratorGolang) generateEntityFileCodeSetters(table *dto.Tabl
 	
 	return code
 }
+
 
 func (serv *SourceGeneratorGolang) generateEntityFileCodeSetter(table *dto.Table, col *dto.Column) string {
 	tnp := SnakeToPascal(table.TableName)
@@ -645,6 +676,7 @@ func (serv *SourceGeneratorGolang) generateEntityFileCodeSetter(table *dto.Table
 	return code
 }
 
+
 func (serv *SourceGeneratorGolang) generateEntityFileCodeToDto(table *dto.Table) string {
 	tnp := SnakeToPascal(table.TableName)
 	tni := GetSnakeInitial(table.TableName)
@@ -677,15 +709,18 @@ func (serv *SourceGeneratorGolang) generateEntityFileCodeToDto(table *dto.Table)
 	return code
 }
 
+// dao生成
 func (serv *SourceGeneratorGolang) generateDao() error {
 	path := serv.path + "model/dao/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
 		return err
 	}
 
 	return serv.generateDaoFiles(path)
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFiles(path string) error {
 	for _, table := range *serv.tables {
@@ -695,6 +730,7 @@ func (serv *SourceGeneratorGolang) generateDaoFiles(path string) error {
 	}
 	return nil
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFile(table *dto.Table, path string) error {
 	tn := table.TableName
@@ -719,6 +755,7 @@ func (serv *SourceGeneratorGolang) generateDaoFile(table *dto.Table, path string
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column) string {
 	var ls []string
 	for _, col := range cols {
@@ -728,6 +765,7 @@ func (serv *SourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column)
 	}
 	return strings.Join(ls, ", ")
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table) string {
 	tn := table.TableName
@@ -758,6 +796,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table
 	code += "\treturn ret, err\n}\n"
 	return code
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) string {
 	tn := table.TableName
@@ -805,6 +844,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) s
 	return code
 }
 
+
 func (serv *SourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
@@ -812,6 +852,7 @@ func (serv *SourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) s
 	}
 	return strings.Join(ls, ",")
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) string {
 	tn := table.TableName
@@ -857,6 +898,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) s
 
 	return code
 }
+
 
 func (serv *SourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
@@ -923,6 +965,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 	return code
 }
 
+
 func (serv *SourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -956,6 +999,7 @@ func (serv *SourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) s
 	return code
 }
 
+// web生成
 func (serv *SourceGeneratorGolang) generateWeb() error {
 	source := "_originalcopy_/golang/web"
 	destination := serv.path + "web/"
@@ -970,30 +1014,31 @@ func (serv *SourceGeneratorGolang) generateWeb() error {
 		return err
 	}
 	if err := serv.generateTemplate(); err != nil {
-		logger.LogError(err.Error())
 		return err
 	}
 
 	return nil
 }
 
+// static生成
 func (serv *SourceGeneratorGolang) generateStatic() error {
 	if err := serv.generateCss(); err != nil {
 		return err
 	}
 
 	if err := serv.generateJs(); err != nil {
-		logger.LogError(err.Error())
 		return err
 	}
 
 	return nil
 }
 
+// css生成
 func (serv *SourceGeneratorGolang) generateCss() error {
 	return nil
 }
 
+// js生成
 func (serv *SourceGeneratorGolang) generateJs() error {
 	path := serv.path + "web/static/js/"
 
@@ -1004,6 +1049,7 @@ func (serv *SourceGeneratorGolang) generateJs() error {
 
 	return serv.generateJsFiles(path)
 }
+
 
 func (serv *SourceGeneratorGolang) generateJsFiles(path string) error {
 	for _, table := range *serv.tables {
@@ -1016,6 +1062,7 @@ func (serv *SourceGeneratorGolang) generateJsFiles(path string) error {
 	return nil
 }
 
+// template生成
 func (serv *SourceGeneratorGolang) generateTemplate() error {
 	path := serv.path + "web/template/"
 
@@ -1026,6 +1073,7 @@ func (serv *SourceGeneratorGolang) generateTemplate() error {
 
 	return serv.generateTemplateFiles(path)
 }
+
 
 func (serv *SourceGeneratorGolang) generateTemplateFiles(path string) error {
 	if err := serv.generateTemplateFileHeader(path); err != nil {
@@ -1045,6 +1093,7 @@ func (serv *SourceGeneratorGolang) generateTemplateFiles(path string) error {
 	return nil
 }
 
+
 func (serv *SourceGeneratorGolang) generateTemplateFileHeader(path string) error {
 	content := GenerateHtmlCodeHeader(serv.tables)
 	code := `{{define "header"}}` + content + `{{end}}`
@@ -1055,6 +1104,7 @@ func (serv *SourceGeneratorGolang) generateTemplateFileHeader(path string) error
 	}
 	return err
 }
+
 
 func (serv *SourceGeneratorGolang) generateTemplateFileFooter(path string) error {
 	content := GenerateHtmlCodeFooter()
@@ -1067,6 +1117,7 @@ func (serv *SourceGeneratorGolang) generateTemplateFileFooter(path string) error
 	return err
 }
 
+
 func (serv *SourceGeneratorGolang) generateTemplateFileIndex(path string) error {
 	content := "\n"
 	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
@@ -1077,6 +1128,7 @@ func (serv *SourceGeneratorGolang) generateTemplateFileIndex(path string) error 
 	}
 	return err
 }
+
 
 func (serv *SourceGeneratorGolang) generateTemplateFile(table *dto.Table, path string) error {
 	content := GenerateHtmlCodeMain(table)
