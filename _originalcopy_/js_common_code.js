@@ -78,9 +78,13 @@ const addChangedAction = (columnName) => {
 /* <tbody></tbody>レンダリング */
 const renderTbody = (data) => {
 	let tbody= '';
-	for (const elem of data) {
-		tbody += createTr(elem);
+
+	if (data != null) {
+		for (const elem of data) {
+			tbody += createTr(elem);
+		}
 	}
+
 	tbody += createTrNew();
 
 	document.getElementById('records').innerHTML = tbody;
