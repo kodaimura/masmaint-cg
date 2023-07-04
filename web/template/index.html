@@ -1,22 +1,27 @@
 {{template "header" .}}
-<a href="sample/csv_sample.csv" style="text-decoration: none;"　download>CSVサンプル</a>&nbsp;&nbsp;&nbsp;
-<a href="sample/ddl_sample.sql" style="text-decoration: none;"　download>DDLサンプル(PostgreSQL)</a>
+<a href="https://masmaint-sample.carkodr.com/mastertables" style="text-decoration: none;">マスメン画面サンプル</a>
+<hr>
+<div>手順</div>
 <ol>
-	<li>テーブル定義に沿ってCSVを用意</li>
+	<li>テーブル定義に沿ってCSVを用意
+		（<a href="sample/csv_sample.csv" style="text-decoration: none;"　download>CSVサンプル</a>&nbsp;&nbsp; 
+		<a href="https://github.com/kodaimura/masmaint-sample/tree/main/sample" style="text-decoration: none;">DDLサンプル</a>）
+	</li>
 	<li>言語・RDBMS・CSVを選択し、自動生成</li>
-	<li>生成されたプログラムにDB接続設定を記載</li>
-	<li>実行</li>
-	<li>localhost:3000/mastertables にアクセス</li>
+	<li>
+		生成されたプログラムに対し
+		<a href="https://github.com/kodaimura/masmaint-cg/tree/main/docs">手動設定・実行</a>を行う
+	</li>
+	<li>localhost:設定ポート/mastertables にアクセス</li>
 </ol>
+
 <div class="row">
 	<div class="col-4">
-		<label for="lang">言語</label>
 		<select class="form-select" id="lang">
 			<option value="golang" selected>Golang (Gin)</option>
 		</select>
 	</div>
 	<div class="col-4">
-		<label for="rdbms">RDBMS</label>
 		<select class="form-select" id="rdbms">
 			<option value="postgresql" selected>PostgreSQL</option>
 			<option value="mysql">MySQL</option>
@@ -24,7 +29,6 @@
 		</select>
 	</div>
 </div>
-
 <div class="row align-items-center mt-3">
 	<div class="col-8">
 		<div class="input-group mb-1">
@@ -35,6 +39,8 @@
 		<button type="button" class="btn btn-primary" id="generate">自動生成</button>
 	</div>
 </div>
+&nbsp;&nbsp;&nbsp;
+
 <div id="message" class="overflow-auto" style="max-height: 50vh;"></div>
 <script type="text/javascript" src="/js/index.js"></script>
 {{template "footer" .}}
