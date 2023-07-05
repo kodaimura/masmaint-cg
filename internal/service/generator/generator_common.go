@@ -73,7 +73,7 @@ func generateJsCode_createTrNew(table *dto.Table) string {
 }
 
 func generateJsCode_createTr(table *dto.Table) string {
-	code := "`<tr><td><input class='form-check-input' type='checkbox' name='del' value=${JSON.stringify(elem)}></td>`"
+	code := "`<tr><td><input class='form-check-input' type='checkbox' name='del' value='${JSON.stringify(elem)}'></td>`"
 	for _, col := range table.Columns {
 		cn := col.ColumnName
 		if col.IsUpdAble {
@@ -338,7 +338,7 @@ func generateHtmlCode_h2(table *dto.Table) string {
 func generateHtmlCode_tr(table *dto.Table) string {
 	code := ""
 	for _, col := range table.Columns {
-		if col.IsNotNull && (col.IsUpdAble || col.IsInsAble) {
+		if (col.IsNotNull || col.IsPrimaryKey) && (col.IsUpdAble || col.IsInsAble) {
 			code += fmt.Sprintf("\n\t\t\t\t<th>%s<spnn style='color:red;'>*</spnn></th>", col.ColumnName)
 		} else {
 			code += fmt.Sprintf("\n\t\t\t\t<th>%s</th>", col.ColumnName)
