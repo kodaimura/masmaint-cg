@@ -8,7 +8,7 @@ import (
 func SetRouter(r *gin.Engine) {
 
 	//render HTML or redirect
-	rc := newRootController()
+	rc := NewRootController()
 		
 	r.GET("/", rc.indexPage)
 	r.POST("/csv", rc.postCsv)

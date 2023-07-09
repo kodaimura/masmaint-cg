@@ -11,15 +11,15 @@ import (
 )
 
 
-type CsvParseService struct {}
+type csvParseService struct {}
 
 
-func NewCsvParseService() *CsvParseService {
-	return &CsvParseService{}
+func NewCsvParseService() *csvParseService {
+	return &csvParseService{}
 }
 
 
-func (serv *CsvParseService) Parse(path string) ([]dto.Table, []string) {
+func (serv *csvParseService) Parse(path string) ([]dto.Table, []string) {
 	records, errs := serv.readFile(path)
 	if len(errs) != 0 {
 		return nil, errs
@@ -36,7 +36,7 @@ func (serv *CsvParseService) Parse(path string) ([]dto.Table, []string) {
 }
 
 
-func (serv *CsvParseService) readFile(path string) ([][]string, []string) {
+func (serv *csvParseService) readFile(path string) ([][]string, []string) {
 	file, err := os.Open(path)
 
 	if err != nil {
@@ -58,36 +58,36 @@ func (serv *CsvParseService) readFile(path string) ([][]string, []string) {
 	return records, nil
 }
 
-func (serv *CsvParseService) isValidTableLabel(s string) bool {
+func (serv *csvParseService) isValidTableLabel(s string) bool {
 	return s == "t" || s == "T"
 }
 
-func (serv *CsvParseService) isValidColumnLabel(s string) bool {
+func (serv *csvParseService) isValidColumnLabel(s string) bool {
 	return s == "c" || s == "C"
 }
 
-func (serv *CsvParseService) isValidColumnName(s string) bool {
+func (serv *csvParseService) isValidColumnName(s string) bool {
 	//一旦空文字でないかのチェックのみ
 	//利用可能文字チェックなど実装想定
 	return s != ""
 }
 
-func (serv *CsvParseService) isValidTableName(s string) bool {
+func (serv *csvParseService) isValidTableName(s string) bool {
 	//一旦空文字でないかのチェックのみ
 	//利用可能文字チェックなど実装想定
 	return s != ""
 }
 
-func (serv *CsvParseService) isValidColumnType(s string) bool {
+func (serv *csvParseService) isValidColumnType(s string) bool {
 	sl := strings.ToLower(s)
 	return sl == "s" || sl == "i" || sl == "f" || sl == "t"
 }
 
-func (serv *CsvParseService) isValidFlg(s string) bool {
+func (serv *csvParseService) isValidFlg(s string) bool {
 	return s == "0" || s == "1"
 }
 
-func (serv *CsvParseService) isStartWithTableLabel(records [][]string) bool {
+func (serv *csvParseService) isStartWithTableLabel(records [][]string) bool {
 	for _, row := range records {
 		if serv.isValidTableLabel(row[0]) {
 			return true
@@ -99,7 +99,7 @@ func (serv *CsvParseService) isStartWithTableLabel(records [][]string) bool {
 	return false
 }
 
-func (serv *CsvParseService) validate(records [][]string) []string {
+func (serv *csvParseService) validate(records [][]string) []string {
 	var errs []string
 	tname := ""
 	hasPk := true
@@ -166,7 +166,7 @@ func (serv *CsvParseService) validate(records [][]string) []string {
 }
 
 
-func (serv *CsvParseService) convertTables(records [][]string) []dto.Table {
+func (serv *csvParseService) convertTables(records [][]string) []dto.Table {
 	var tables []dto.Table
 	var t dto.Table
 	var columns []dto.Column

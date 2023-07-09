@@ -11,15 +11,15 @@ import (
 )
 
 
-type DdlParseService struct {}
+type ddlParseService struct {}
 
 
-func NewDdlParseService() *DdlParseService {
-	return &DdlParseService{}
+func NewDdlParseService() *ddlParseService {
+	return &ddlParseService{}
 }
 
 
-func (serv *DdlParseService) Parse(path, dbtype string) ([]dto.Table, error) {
+func (serv *ddlParseService) Parse(path, dbtype string) ([]dto.Table, error) {
 	ddl, _ := serv.readFile(path)
 	tokens := serv.lexicalAnalysis(ddl)
 	err := serv.validate(tokens, dbtype)
@@ -27,7 +27,7 @@ func (serv *DdlParseService) Parse(path, dbtype string) ([]dto.Table, error) {
 }
 
 
-func (serv *DdlParseService) readFile(path string) (string, error) {
+func (serv *ddlParseService) readFile(path string) (string, error) {
 	ret := ""
 	file, err := os.Open(path)
 
@@ -55,7 +55,7 @@ func (serv *DdlParseService) readFile(path string) (string, error) {
 
 
 //字句解析
-func (serv *DdlParseService) lexicalAnalysis(ddl string) []string {
+func (serv *ddlParseService) lexicalAnalysis(ddl string) []string {
 	ddl = strings.ReplaceAll(ddl, "\n", "")
 	ddl = strings.ReplaceAll(ddl, "(", " ( ")
 	ddl = strings.ReplaceAll(ddl, ")", " ) ")
@@ -68,7 +68,7 @@ func (serv *DdlParseService) lexicalAnalysis(ddl string) []string {
 	return strings.Split(ddl, " ")
 } 
 
-func (serv *DdlParseService) validate(tokens []string, dbtype string) error {
+func (serv *ddlParseService) validate(tokens []string, dbtype string) error {
 	if (dbtype == "postgresql") {
 		return serv.validatePostgreSQL(tokens, dbtype)
 	} else {
@@ -76,6 +76,6 @@ func (serv *DdlParseService) validate(tokens []string, dbtype string) error {
 	}
 }
 
-func (serv *DdlParseService) validatePostgreSQL(tokens []string, dbtype string) error {
+func (serv *ddlParseService) validatePostgreSQL(tokens []string, dbtype string) error {
 	return nil
 }

@@ -13,13 +13,17 @@ type CsvParseService interface {
 	Parse(path string) ([]dto.Table, []string)
 }
 
+type GenerateService interface {
+	Generate(tables *[]dto.Table, lang, rdbms string) (string, error)
+}
+
 type rootController struct {
-	cpServ *service.CsvParseService
-	genServ *service.GenerateService
+	cpServ CsvParseService
+	genServ GenerateService
 }
 
 
-func newRootController() *rootController {
+func NewRootController() *rootController {
 	cpServ := service.NewCsvParseService()
 	genServ := service.NewGenerateService()
 	return &rootController{cpServ, genServ}

@@ -17,14 +17,14 @@ type SourceGenerator interface {
 }
 
 
-type GenerateService struct {}
+type generateService struct {}
 
-func NewGenerateService() *GenerateService {
-	return &GenerateService{}
+func NewGenerateService() *generateService {
+	return &generateService{}
 }
 
 
-func (serv *GenerateService) Generate(tables *[]dto.Table, lang, rdbms string) (string, error) {
+func (serv *generateService) Generate(tables *[]dto.Table, lang, rdbms string) (string, error) {
 	path := serv.generateSourcePath()
 
 	if err := serv.generateSource(tables, lang, rdbms, path); err != nil {
@@ -42,13 +42,13 @@ func (serv *GenerateService) Generate(tables *[]dto.Table, lang, rdbms string) (
 }
 
 
-func (serv *GenerateService) generateSourcePath() string {
+func (serv *generateService) generateSourcePath() string {
 	return "./output/masmaint-" + time.Now().Format("2006-01-02-15-04-05") + 
 		"-" + utils.RandomString(10)
 }
 
 
-func (serv *GenerateService) generateSource(tables *[]dto.Table, lang, rdbms, path string) error {
+func (serv *generateService) generateSource(tables *[]dto.Table, lang, rdbms, path string) error {
 	var sg SourceGenerator
 
 	if !(rdbms == constant.POSTGRESQL ||
