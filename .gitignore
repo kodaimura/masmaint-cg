@@ -5,5 +5,3 @@
 main
 tmp/*.csv
 output/*.zip
-
-.env
