@@ -1,0 +1,2 @@
+0 3 * * * rm -rf /var/www/masmaint-cg/tmp/*
+0 3 * * * rm -rf /var/www/masmaint-cg/output/*
