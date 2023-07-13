@@ -152,6 +152,9 @@ func (serv *csvParseService) validate(records [][]string) []string {
 			if row[3] == "1" && row[6] != "0" {
 				errs = append(errs, fmt.Sprintf("%d行7列: 主キーのカラムは更新不可 0 としてください。", i))
 			} 
+			if row[3] == "1" && row[4] != "0" {
+				errs = append(errs, fmt.Sprintf("%d行5列: 主キーのカラムはNotNull制約フラグを 0 としてください。", i))
+			} 
 			if row[3] == "1" {
 				hasPk = true
 			}
