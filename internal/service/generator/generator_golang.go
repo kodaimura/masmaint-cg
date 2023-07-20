@@ -597,21 +597,23 @@ func (serv *sourceGeneratorGolang) generateEntityFiles(path string) error {
 
 func (serv *sourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	isNotNull := col.IsNotNull
+	isPrimaryKey := col.IsPrimaryKey
 	colType := col.ColumnType
+
 	if colType == "s" || colType == "t" {
-		if isNotNull {
+		if isNotNull || isPrimaryKey {
 			return "string"
 		}
 		return "sql.NullString"
 	}
 	if colType == "i" {
-		if isNotNull {
+		if isNotNull || isPrimaryKey {
 			return "int64"
 		}
 		return "sql.NullInt64"
 	}
 	if colType == "f" {
-		if isNotNull {
+		if isNotNull || isPrimaryKey {
 			return "float64"
 		}
 		return "sql.NullFloat64"
