@@ -780,8 +780,14 @@ func (serv *sourceGeneratorGolang) generateDaoFile(table *dto.Table, path string
 
 	code += serv.generateDaoFileCodeSelectAll(table) + "\n\n"
 	code += serv.generateDaoFileCodeSelect(table) + "\n\n"
-	code += serv.generateDaoFileCodeInsert(table) + "\n\n"
-	code += serv.generateDaoFileCodeUpdate(table) + "\n\n"
+	if serv.rdbms == constant.MYSQL {
+		// RETURNING が使えない場合
+		code += serv.generateDaoFileCodeInsert_MySQL(table) + "\n\n"
+		code += serv.generateDaoFileCodeUpdate_MySQL(table) + "\n\n"
+	} else {
+		code += serv.generateDaoFileCodeInsert(table) + "\n\n"
+		code += serv.generateDaoFileCodeUpdate(table) + "\n\n"
+	}
 	code += serv.generateDaoFileCodeDelete(table)
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
@@ -829,8 +835,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table
 		}
 	}
 	code += fmt.Sprintf("\n\t\t FROM %s\n\t\t ORDER BY %s ASC", tn, serv.concatPrimaryKeyWithCommas(table.Columns))
-	code += "`"
-	code += ",\n\t)\n\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n"
+	code += "`,\n\t)\n\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n"
 
 	code += fmt.Sprintf("\tfor rows.Next() {\n\t\t%s := entity.%s{}\n\t\terr = rows.Scan(\n", tni, tnp)
 	for _, col := range table.Columns {
@@ -873,8 +878,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) s
 			}
 		}
 	}
-	code += "`"
-	code += ",\n"
+	code += "`,\n"
 
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey {
@@ -929,8 +933,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) s
 			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
 		}
 	}
-	code += "`"
-	code += ",\n"
+	code += "`,\n"
 
 	for _, col := range table.Columns {
 		if col.IsInsAble {
@@ -946,6 +949,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) s
 
 	return code
 }
+
 
 func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
@@ -990,8 +994,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
 		}
 	}
-	code += "`"
-	code += ",\n"
+	code += "`,\n"
 
 	for _, col := range table.Columns {
 		if col.IsUpdAble {
@@ -1009,6 +1012,116 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
 	}
 	code += "\t)\n\n\treturn ret, err\n}\n" 
+
+	return code
+}
+
+
+func (serv *sourceGeneratorGolang) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool) {
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey && !col.IsInsAble && (col.ColumnType == "i") {
+			return col, true
+		}
+	}
+	return dto.Column{}, false
+}
+
+
+func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert_MySQL(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	aicol, hasAICol := serv.getAutoIncrementColumn(table)
+	code := fmt.Sprintf("func (rep *%sDao) Insert(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp)
+
+	if hasAICol {
+		code += "\tresult, err := rep.db.Exec(\n"
+	} else {
+		code += "\t_, err := rep.db.Exec(\n"
+	}
+	
+	code += fmt.Sprintf("\t\t`INSERT INTO %s (\n", tn)
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
+			} else {
+				code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
+			}
+		}
+	}
+	code += fmt.Sprintf("\n\t\t ) VALUES (%s)`,\n", serv.concatBindVariableWithCommas(bindCount))
+
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+	code += fmt.Sprintf("\t)\n\n\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp)
+
+	if hasAICol {
+		code += "\tlastInsertId, err := result.LastInsertId()\n" + 
+			fmt.Sprintf("\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp) +
+			fmt.Sprintf("\t%s.Set%s(lastInsertId)\n\n", tni, SnakeToPascal(aicol.ColumnName))
+	}
+
+	code += fmt.Sprintf("\treturn rep.Select(%s)\n}\n", tni)
+	return code
+}
+
+
+func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate_MySQL(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Update(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp)
+	code += "\t_, err := rep.db.Exec(\n"
+
+	code += fmt.Sprintf("\t\t`UPDATE %s\n\t\t SET\n", tn)
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("\t\t\t%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+			} else {
+				code += fmt.Sprintf("\n\t\t\t,%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+			}
+		}
+	}
+	code += "\n\t\t WHERE "
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			bindCount += 1
+			if isFirst {
+				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+			}
+		}
+	}
+	code += "`,\n"
+
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+
+	code += fmt.Sprintf("\t)\n\n\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp)
+	code += fmt.Sprintf("\treturn rep.Select(%s)\n}\n", tni)
 
 	return code
 }
@@ -1035,8 +1148,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) s
 			}
 		}
 	}
-	code += "`"
-	code += ",\n"
+	code += "`,\n"
 
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey {
