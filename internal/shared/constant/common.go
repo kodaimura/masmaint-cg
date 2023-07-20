@@ -19,5 +19,6 @@ const (
 const (
 	POSTGRESQL = "postgresql"
 	MYSQL = "mysql"
-	SQLITE3 = "sqlite3"
+	MYSQL_8021 = "mysql>=8.0.21"
+	SQLITE_3350 = "sqlite>=3.35.0"
 )

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log"
 	"database/sql"
 	
@@ -19,9 +20,10 @@ func init() {
 
 	db, err = sql.Open(
 		"postgres",
-		"host=" + cf.DbHost + " port=" + cf.DbPort +
-		" user=" + cf.DbUser + " password=" + cf.DbPassword +
-		" dbname=" + cf.DbName + " sslmode=disable",
+		fmt.Sprintf(
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+			cf.DbHost, cf.DbPort, cf.DbUser, cf.DbPassword, cf.DbName,
+		),
 	)
 
 	if err != nil {

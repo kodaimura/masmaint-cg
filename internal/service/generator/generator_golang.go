@@ -96,8 +96,15 @@ func (serv *sourceGeneratorGolang) generateCore() error {
 
 // db生成
 func (serv *sourceGeneratorGolang) generateDb() error {
-	source := fmt.Sprintf("_originalcopy_/golang/core-sub/db/%s.go", serv.rdbms)
-	destination := serv.path + fmt.Sprintf("core/db/%s.go", serv.rdbms)
+	rdbmsCls := "postgresql"
+	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+		rdbmsCls = "mysql"
+	} else if serv.rdbms == constant.SQLITE_3350 {
+		rdbmsCls = "sqlite3"
+	}
+
+	source := fmt.Sprintf("_originalcopy_/golang/core-sub/db/%s.go", rdbmsCls)
+	destination := serv.path + fmt.Sprintf("core/db/db.go")
 
 	err := CopyFile(source, destination)
 	if err != nil {

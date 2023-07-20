@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log"
 	"database/sql"
 	
@@ -19,8 +20,10 @@ func init() {
 
 	db, err = sql.Open(
 		"mysql",
-		cf.DbUser + ":" + cf.DbPassword + "@tcp(" 
-			+ cf.DbHost + ":" + cf.DbPort + ")" + cf.DbName
+		fmt.Sprintf(
+			"%s:%s@tcp(%s:%s)/%s",
+			cf.DbUser, cf.DbPassword, cf.DbHost, cf.DbPort, cf.DbName,
+		),
 	)
 
 	if err != nil {
