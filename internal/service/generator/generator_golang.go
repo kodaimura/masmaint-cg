@@ -96,6 +96,13 @@ func (serv *sourceGeneratorGolang) generateCore() error {
 
 // db生成
 func (serv *sourceGeneratorGolang) generateDb() error {
+	path := serv.path + "core/db"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
 	rdbmsCls := "postgresql"
 	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
 		rdbmsCls = "mysql"
