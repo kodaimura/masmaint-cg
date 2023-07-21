@@ -60,6 +60,8 @@ func (serv *generateService) generateSource(tables *[]dto.Table, lang, rdbms, pa
 
 	if lang == constant.GOLANG {
 		sg = generator.NewSourceGeneratorGolang(tables, rdbms, path + "/masmaint/")
+	} else if lang == constant.PHP {
+		sg = generator.NewSourceGeneratorPhp(tables, rdbms, path + "/masmaint/")
 	} else {
 		return errors.New("未対応言語");
 	}
