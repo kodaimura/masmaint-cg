@@ -137,7 +137,7 @@ func (serv *sourceGeneratorGolang) generateController() error {
 	return serv.generateControllerFiles(path)
 }
 
-
+// controller内のファイル生成
 func (serv *sourceGeneratorGolang) generateControllerFiles(path string) error {
 	if err := serv.generateControllerFileRouter(path); err != nil {
 		return err
@@ -173,6 +173,8 @@ func SetRouter(r *gin.Engine) {
 	}
 }
 `
+
+// controller内のrouter.go生成
 func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) error {
 	code := ""
 	for _, table := range *serv.tables {
@@ -197,7 +199,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) err
 	return err
 }
 
-
+// controller内の*.go生成
 func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path string) error {
 	code := "package controller\n\nimport (\n" +
 		"\t\"github.com/gin-gonic/gin\"\n\n\t\"masmaint/service\"\n\t\"masmaint/dto\"\n)\n\n\n"
@@ -236,7 +238,7 @@ func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 	return err
 }
 
-
+// controllerのGetPageメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateControllerFileCodeGetPage(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -247,7 +249,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodeGetPage(table *dto.
 		"}\n"
 }
 
-
+// controllerのGetメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateControllerFileCodeGet(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -260,7 +262,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodeGet(table *dto.Tabl
 		"\tc.JSON(200, ret)\n}\n"
 }
 
-
+// controllerのPostメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateControllerFileCodePost(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -276,7 +278,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodePost(table *dto.Tab
 		"\tc.JSON(200, ret)\n}\n"
 }
 
-
+// controllerのPutメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateControllerFileCodePut(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -292,7 +294,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodePut(table *dto.Tabl
 		"\tc.JSON(200, ret)\n}\n"
 }
 
-
+// controllerのDeleteメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateControllerFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -320,7 +322,7 @@ func (serv *sourceGeneratorGolang) generateDto() error {
 	return serv.generateDtoFiles(path)
 }
 
-
+// dto内のファイル生成
 func (serv *sourceGeneratorGolang) generateDtoFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateDtoFile(&table, path); err != nil {
@@ -330,7 +332,7 @@ func (serv *sourceGeneratorGolang) generateDtoFiles(path string) error {
 	return nil
 }
 
-
+// dto内の*.go生成
 func (serv *sourceGeneratorGolang) generateDtoFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -363,7 +365,7 @@ func (serv *sourceGeneratorGolang) generateService() error {
 	return serv.generateServiceFiles(path)
 }
 
-
+// service内のファイル生成
 func (serv *sourceGeneratorGolang) generateServiceFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateServiceFile(&table, path); err != nil {
@@ -373,7 +375,7 @@ func (serv *sourceGeneratorGolang) generateServiceFiles(path string) error {
 	return nil
 }
 
-
+// service内の*.go生成
 func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path string) error {
 	code := "package service\n\nimport (\n" +
 		"\t\"errors\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
@@ -414,7 +416,7 @@ func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	return err
 }
 
-
+// serviceのGetAllメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -430,7 +432,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Tabl
 		"\treturn ret, nil\n}\n"
 }
 
-
+// serviceのGetOneメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -464,7 +466,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Tabl
 	return code
 }
 
-
+// serviceのCreateメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -499,7 +501,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Tabl
 	return code
 }
 
-
+// serviceのUpdateメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -533,7 +535,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Tabl
 	return code
 }
 
-
+// serviceのDeleteメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -591,7 +593,7 @@ func (serv *sourceGeneratorGolang) generateEntity() error {
 	return serv.generateEntityFiles(path)
 }
 
-
+// entity内のファイル生成
 func (serv *sourceGeneratorGolang) generateEntityFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateEntityFile(&table, path); err != nil {
@@ -601,7 +603,7 @@ func (serv *sourceGeneratorGolang) generateEntityFiles(path string) error {
 	return nil
 }
 
-
+// CSVフォーマットのカラム型からentityフィールド用の型取得
 func (serv *sourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	isNotNull := col.IsNotNull
 	isPrimaryKey := col.IsPrimaryKey
@@ -628,7 +630,7 @@ func (serv *sourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	return ""
 }
 
-
+// entityの*.go生成
 func (serv *sourceGeneratorGolang) generateEntityFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -652,7 +654,7 @@ func (serv *sourceGeneratorGolang) generateEntityFile(table *dto.Table, path str
 	return err
 }
 
-
+// entityのセッタープログラム生成
 func (serv *sourceGeneratorGolang) generateEntityFileCodeSetters(table *dto.Table) string {
 	tnp := SnakeToPascal(table.TableName)
 
@@ -664,7 +666,7 @@ func (serv *sourceGeneratorGolang) generateEntityFileCodeSetters(table *dto.Tabl
 	return code
 }
 
-
+// entityのセッタープログラム生成
 func (serv *sourceGeneratorGolang) generateEntityFileCodeSetter(table *dto.Table, col *dto.Column) string {
 	tnp := SnakeToPascal(table.TableName)
 	colType := serv.getEntityFieldType(col)
@@ -711,7 +713,7 @@ func (serv *sourceGeneratorGolang) generateEntityFileCodeSetter(table *dto.Table
 	return code
 }
 
-
+// entityのToDtoメソッドプログラム生成
 func (serv *sourceGeneratorGolang) generateEntityFileCodeToDto(table *dto.Table) string {
 	tnp := SnakeToPascal(table.TableName)
 	tni := GetSnakeInitial(table.TableName)
@@ -756,7 +758,7 @@ func (serv *sourceGeneratorGolang) generateDao() error {
 	return serv.generateDaoFiles(path)
 }
 
-
+// dao内のファイル生成
 func (serv *sourceGeneratorGolang) generateDaoFiles(path string) error {
 	for _, table := range *serv.tables {
 		if err := serv.generateDaoFile(&table, path); err != nil {
@@ -766,7 +768,7 @@ func (serv *sourceGeneratorGolang) generateDaoFiles(path string) error {
 	return nil
 }
 
-
+// daoの*.go生成
 func (serv *sourceGeneratorGolang) generateDaoFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -797,7 +799,7 @@ func (serv *sourceGeneratorGolang) generateDaoFile(table *dto.Table, path string
 	return err
 }
 
-
+// SELECT ORDER BYで指定するpkのカンマ区切り文字列生成
 func (serv *sourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column) string {
 	var ls []string
 	for _, col := range cols {
@@ -808,7 +810,7 @@ func (serv *sourceGeneratorGolang) concatPrimaryKeyWithCommas(cols []dto.Column)
 	return strings.Join(ls, ", ")
 }
 
-
+// バインド変数文字列生成
 func (serv *sourceGeneratorGolang) getBindVariable(n int) string {
 	if serv.rdbms == constant.POSTGRESQL {
 		return fmt.Sprintf("$%d", n)
@@ -817,7 +819,7 @@ func (serv *sourceGeneratorGolang) getBindVariable(n int) string {
 	}
 }
 
-
+// daoのSelectAllメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -848,7 +850,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table
 	return code
 }
 
-
+// daoのSelectメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -895,7 +897,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeSelect(table *dto.Table) s
 	return code
 }
 
-
+// INSERT VALUES (...)用のバインド変数のカンマ区切り文字列生成
 func (serv *sourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
@@ -904,7 +906,7 @@ func (serv *sourceGeneratorGolang) concatBindVariableWithCommas(bindCount int) s
 	return strings.Join(ls, ",")
 }
 
-
+// daoのInsertメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -950,7 +952,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert(table *dto.Table) s
 	return code
 }
 
-
+// daoのUpdateメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -1016,7 +1018,8 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 	return code
 }
 
-
+// AUTO_INCREMENTのカラム取得
+// このシステムではPK・入力不可・整数型のカラムはAUTO_INCREMENTのカラムと判定する
 func (serv *sourceGeneratorGolang) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool) {
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey && !col.IsInsAble && (col.ColumnType == "i") {
@@ -1026,7 +1029,8 @@ func (serv *sourceGeneratorGolang) getAutoIncrementColumn(table *dto.Table) (dto
 	return dto.Column{}, false
 }
 
-
+// daoのInsertメソッド生成(MYSQLの8.0.21以前用)
+// RETURNINGを使わない
 func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert_MySQL(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -1072,7 +1076,8 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert_MySQL(table *dto.Ta
 	return code
 }
 
-
+// daoのUpdateメソッド生成(MYSQLの8.0.21以前用)
+// RETURNINGを使わない
 func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate_MySQL(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -1126,7 +1131,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate_MySQL(table *dto.Ta
 	return code
 }
 
-
+// daoのDeleteメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -1211,7 +1216,7 @@ func (serv *sourceGeneratorGolang) generateJs() error {
 	return serv.generateJsFiles(path)
 }
 
-
+// jsの*.js生成
 func (serv *sourceGeneratorGolang) generateJsFiles(path string) error {
 	for _, table := range *serv.tables {
 		code := GenerateJsCode(&table)
@@ -1235,7 +1240,7 @@ func (serv *sourceGeneratorGolang) generateTemplate() error {
 	return serv.generateTemplateFiles(path)
 }
 
-
+// template内のファイル生成
 func (serv *sourceGeneratorGolang) generateTemplateFiles(path string) error {
 	if err := serv.generateTemplateFileHeader(path); err != nil {
 		return err
@@ -1254,7 +1259,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFiles(path string) error {
 	return nil
 }
 
-
+// template内の_header.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileHeader(path string) error {
 	content := GenerateHtmlCodeHeader(serv.tables)
 	code := `{{define "header"}}` + content + `{{end}}`
@@ -1266,7 +1271,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileHeader(path string) error
 	return err
 }
 
-
+// template内の_footer.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileFooter(path string) error {
 	content := GenerateHtmlCodeFooter()
 	code := `{{define "footer"}}` + content + `{{end}}`
@@ -1278,7 +1283,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileFooter(path string) error
 	return err
 }
 
-
+// template内のindex.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileIndex(path string) error {
 	content := "\n"
 	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
@@ -1290,7 +1295,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileIndex(path string) error 
 	return err
 }
 
-
+// template内の*.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFile(table *dto.Table, path string) error {
 	content := GenerateHtmlCodeMain(table)
 	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
