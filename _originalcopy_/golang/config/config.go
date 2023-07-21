@@ -20,6 +20,7 @@ type Config struct {
 	DbPassword string
 
 	JwtSecretKey string
+	LogLevel string
 }
 
 var cf Config
@@ -42,6 +43,7 @@ func init() {
 	cf.DbPassword = os.Getenv("DB_PASSWORD")
 
 	cf.JwtSecretKey = os.Getenv("JWT_SECRET_KEY")
+	cf.LogLevel = os.Getenv("LOG_LEVEL")
 }
 
 
