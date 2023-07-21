@@ -8,6 +8,8 @@ import (
 	"runtime"
 
 	"github.com/gin-gonic/gin"
+
+	"masmaint/config"
 )
 
 

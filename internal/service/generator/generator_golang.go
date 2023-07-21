@@ -201,8 +201,8 @@ func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) err
 
 // controller内の*.go生成
 func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path string) error {
-	code := "package controller\n\nimport (\n" +
-		"\t\"github.com/gin-gonic/gin\"\n\n\t\"masmaint/service\"\n\t\"masmaint/dto\"\n)\n\n\n"
+	code := "package controller\n\nimport (\n\t\"github.com/gin-gonic/gin\"\n\n" +
+		"\tcerror \"masmaint/core/error\"\n\t\"masmaint/service\"\n\t\"masmaint/dto\"\n)\n\n\n"
 
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -274,7 +274,9 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodePost(table *dto.Tab
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tret, err := ctr.%sServ.Create(&%sDto)\n\n", tni, tni) +
-		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
+		"\tif err != nil {\n\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
+		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
+		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, ret)\n}\n"
 }
 
@@ -290,7 +292,9 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodePut(table *dto.Tabl
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tret, err := ctr.%sServ.Update(&%sDto)\n\n", tni, tni) +
-		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
+		"\tif err != nil {\n\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
+		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
+		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, ret)\n}\n"
 }
 
@@ -306,7 +310,9 @@ func (serv *sourceGeneratorGolang) generateControllerFileCodeDelete(table *dto.T
 		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
 		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		fmt.Sprintf("\tif err := ctr.%sServ.Delete(&%sDto); err != nil {\n", tni, tni) +
-		"\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
+		"\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
+		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
+		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
 		"\tc.JSON(200, gin.H{})\n}\n"
 }
 
@@ -378,7 +384,7 @@ func (serv *sourceGeneratorGolang) generateServiceFiles(path string) error {
 // service内の*.go生成
 func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path string) error {
 	code := "package service\n\nimport (\n" +
-		"\t\"errors\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
+		"\tcerror \"masmaint/core/error\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
 		"\t\"masmaint/model/dao\"\n\t\"masmaint/dto\"\n)\n\n\n"
 
 	tn := table.TableName
@@ -426,7 +432,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Tabl
 	return fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnc, tnp) +
 		fmt.Sprintf("\trows, err := serv.%sDao.SelectAll()\n", tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
-		fmt.Sprintf("\t\treturn []dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\t\treturn []dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
 		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
 		"\treturn ret, nil\n}\n"
@@ -456,10 +462,10 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Tabl
  		}
 	}
 	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Select(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
 
@@ -490,11 +496,11 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Tabl
  		}
 	}
 	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Insert(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
 
@@ -525,10 +531,10 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Tabl
  		}
 	}
 	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"不正な値があります。\")\n\t}\n\n", tnp)
+	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Update(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, errors.New(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
+		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
 
@@ -559,10 +565,10 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Tabl
  		}
 	}
 	code += "{\n"
-	code += "\t\treturn errors.New(\"不正な値があります。\")\n\t}\n\n"
+	code += "\t\treturn cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n"
 	code += fmt.Sprintf("\terr := serv.%sDao.Delete(%s)\n", tni, tni) +
 		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
-		"\t\treturn errors.New(\"削除に失敗しました。\")\n\t}\n\n" +
+		"\t\treturn cerror.NewDaoError(\"削除に失敗しました。\")\n\t}\n\n" +
 		"\treturn nil\n}\n"
 
 	return code
