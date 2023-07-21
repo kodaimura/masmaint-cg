@@ -5,7 +5,7 @@ import (
 	"time"
 	"os/exec"
 
-	"masmaint-cg/pkg/utils"
+	"masmaint-cg/internal/core/utils"
 	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
 	"masmaint-cg/internal/shared/constant"
