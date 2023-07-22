@@ -237,8 +237,15 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 
 // src生成
 func (serv *sourceGeneratorPhp) generateSrc() error {
-	source := "_originalcopy_/php/src"
-	destination := serv.path + "src/"
+	path := serv.path + "src/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	source := "_originalcopy_/php/src/Application"
+	destination := serv.path + "src/Application"
 
 	err := CopyDir(source, destination)
 	if err != nil {
