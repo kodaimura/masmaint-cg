@@ -219,7 +219,8 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 	for _, table := range *serv.tables {
 		tn := table.TableName
 		tnp := SnakeToPascal(tn)
-		code += fmt.Sprintf("\n\t\t$group->get('/%s', %sController::class. ':%sPage');\n", tn, tnp, tn)
+		tnc := SnakeToCamel(tn)
+		code += fmt.Sprintf("\n\t\t$group->get('/%s', %sController::class. ':%sPage');\n", tn, tnp, tnc)
         code += fmt.Sprintf("\t\t$group->get('/api/%s', %sController::class. ':get%s');\n", tn, tnp, tnp)
         code += fmt.Sprintf("\t\t$group->post('/api/%s', %sController::class. ':post%s');\n", tn, tnp, tnp)
         code += fmt.Sprintf("\t\t$group->put('/api/%s', %sController::class. ':put%s');\n", tn, tnp, tnp)
