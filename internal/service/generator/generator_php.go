@@ -429,7 +429,7 @@ class %sController extends BaseController
 }
 `
 
-// Controllers内の*.php生成
+// Controllers内の*Controller.php生成
 func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -503,7 +503,7 @@ class %sService extends BaseService
 }
 `
 
-// Services内の*.php生成
+// Services内の*Service.php生成
 func (serv *sourceGeneratorPhp) generateServicesFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -595,10 +595,10 @@ func (serv *sourceGeneratorPhp) generateModels() error {
 	if err := serv.generateEntities(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateDaos(); err != nil {
 		return err
 	}
+	/*
 	if err := serv.generateDaoImpls(); err != nil {
 		return err
 	}
@@ -739,6 +739,66 @@ func (serv *sourceGeneratorPhp) generateEntitiesFile(table *dto.Table, path stri
 
 	code += "\t\t];\n\t}\n}"
 	err := WriteFile(fmt.Sprintf("%s%s.php", path, SnakeToPascal(table.TableName)), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+// Daos生成
+func (serv *sourceGeneratorPhp) generateDaos() error {
+	path := serv.path + "src/Application/Models/Daos/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateDaosFiles(path)
+}
+
+// Daos内のファイル生成
+func (serv *sourceGeneratorPhp) generateDaosFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateDaosFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const PHP_DAO_FORMAT =
+`
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Models\Daos;
+
+use App\Application\Models\Entities\%s;
+
+interface %sDao
+{
+
+    public function findAll(): array;
+
+    public function create(%s $%s): %s;
+
+    public function update(%s $%s): %s;
+
+    public function delete(%s $%s);
+}
+`
+// Daos内の*Dao.php生成
+func (serv *sourceGeneratorPhp) generateDaosFile(table *dto.Table, path string) error {
+	tnc := SnakeToCamel(table.TableName)
+	tnp := SnakeToPascal(table.TableName)
+
+	code := fmt.Sprintf(
+		PHP_DAO_FORMAT,
+		tnp, tnp, tnp, tnc, tnp, tnp, tnc, tnp, tnp, tnc,
+	)
+	err := WriteFile(fmt.Sprintf("%s%sDao.php", path, SnakeToPascal(table.TableName)), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
