@@ -3,7 +3,7 @@ package generator
 import (
 	"os"
 	"fmt"
-	//"strings"
+	"strings"
 
 	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
@@ -865,11 +865,11 @@ class %sDaoImpl implements %sDao
 `
 // DaoImpls内の*DaoImpl.php生成
 func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path string) error {
-	tnp := SnakeToPascal(tn)
+	tnp := SnakeToPascal(table.TableName)
 
 	code := fmt.Sprintf(
 		PHP_DAOIMPL_FORMAT,
-		tnp, tnp, tnp, tnp
+		tnp, tnp, tnp, tnp,
 		serv.generateDaoImplsFileCodeFindAll(table),
 		serv.generateDaoImplsFileCodeFindOne(table),
 		serv.generateDaoImplsFileCodeCreate(table),
@@ -877,7 +877,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path stri
 		serv.generateDaoImplsFileCodeDelete(table),
 	)
 
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+	err := WriteFile(fmt.Sprintf("%s%s.DaoImpl.php", path, tnp), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -898,7 +898,6 @@ func (serv *sourceGeneratorPhp) concatPrimaryKeyWithCommas(cols []dto.Column) st
 // DaoImplのfindAllメソッド生成
 func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindAll(table *dto.Table) string {
 	tn := table.TableName
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
 	code := "\tpublic function findAll(): array\n\t{\n"
