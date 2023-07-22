@@ -38,13 +38,7 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 	if err := serv.generateSettingFiles(); err != nil {
 		return err
 	}
-	if err := serv.generateTemplates(); err != nil {
-		return err
-	}
 	/*
-	if err := serv.generatePublic(); err != nil {
-		return err
-	}
 	if err := serv.generateApp(); err != nil {
 		return err
 	}
@@ -52,6 +46,13 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 		return err
 	}
 	*/
+	if err := serv.generatePublic(); err != nil {
+		return err
+	}
+	if err := serv.generateTemplates(); err != nil {
+		return err
+	}
+	
 	return nil	
 }
 
@@ -134,6 +135,62 @@ func (serv *sourceGeneratorPhp) generateTemplatesFiles(path string) error {
 	}
 	for _, table := range *serv.tables {
 		if err := serv.generateTemplatesFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// public生成
+func (serv *sourceGeneratorPhp) generatePublic() error {
+	source := "_originalcopy_/php/public"
+	destination := serv.path + "public/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateStatic()
+}
+
+// static生成
+func (serv *sourceGeneratorPhp) generateStatic() error {
+	if err := serv.generateCss(); err != nil {
+		return err
+	}
+
+	if err := serv.generateJs(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// css生成
+func (serv *sourceGeneratorPhp) generateCss() error {
+	return nil
+}
+
+// js生成
+func (serv *sourceGeneratorPhp) generateJs() error {
+	path := serv.path + "public/static/js/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateJsFiles(path)
+}
+
+// jsの*.js生成
+func (serv *sourceGeneratorPhp) generateJsFiles(path string) error {
+	for _, table := range *serv.tables {
+		code := GenerateJsCode(&table)
+		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
+			logger.LogError(err.Error())
 			return err
 		}
 	}
