@@ -270,10 +270,10 @@ func (serv *sourceGeneratorPhp) generateApplication() error {
 	if err := serv.generateSettings(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateControllers(); err != nil {
 		return err
 	}
+	/*
 	if err := serv.generateServices(); err != nil {
 		return err
 	}
@@ -303,6 +303,149 @@ func (serv *sourceGeneratorPhp) generateResponseEmitter() error {
 // Settings生成
 func (serv *sourceGeneratorPhp) generateSettings() error {
 	return nil
+}
+
+// Controllers生成
+func (serv *sourceGeneratorPhp) generateControllers() error {
+	path := serv.path + "src/Application/Controllers/"
+	return serv.generateControllersFiles(path)
+}
+
+// Controllers内のファイル生成
+func (serv *sourceGeneratorPhp) generateControllersFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateControllersFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const PHP_CONTROLLER_FORMAT =
+`
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Controllers;
+
+use App\Application\Controllers\BaseController;
+use App\Application\Services\%sService ;
+use Psr\Log\LoggerInterface;
+use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseInterface as Response;
+use Slim\Views\Twig;
+
+class %sController extends BaseController
+{
+
+    private Twig $twig;
+    protected %sService $%sService;
+
+    public function __construct(ContainerInterface $container, LoggerInterface $logger, Twig $twig, %sService $%sService)
+    {
+        parent::__construct($container, $logger);
+        $this->twig = $twig;
+        $this->%sService = $%sService;
+    }
+
+    public function %sPage($request, $response, $args): Response
+    {
+        $response = $this->twig->render($response, '%s.html', []);
+        return $response;
+    }
+
+    public function get%s($request, $response, $args): Response
+    {
+        $results = $this->%sService->getAll();
+        $response->getBody()->write(json_encode($results));
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function post%s($request, $response, $args): Response
+    {
+        $data = $request->getParsedBody();
+        try {
+            $result = $this->%sService->create($data);
+            $response->getBody()->write(json_encode($result));
+
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->debug($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(400);
+            
+        } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(500);
+        }
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function put%s($request, $response, $args): Response
+    {
+        $data = $request->getParsedBody();
+        try {
+            $result = $this->%sService->update($data);
+            $response->getBody()->write(json_encode($result));
+
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->debug($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(400);
+
+        } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(500);
+        }
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+    public function delete%s($request, $response, $args): Response
+    {
+        $data = $request->getParsedBody();
+        try {
+            $this->%sService->delete($data);
+
+        } catch (\InvalidArgumentException $e) {
+            $this->logger->debug($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(400);
+
+        } catch (\Exception $e) {
+            $this->logger->error($e->getMessage());
+            return $response
+            ->withHeader('Content-Type', 'application/json')
+            ->withStatus(500);
+        }
+        return $response->withHeader('Content-Type', 'application/json');
+    }
+
+}
+`
+
+// Controllers内の*.php生成
+func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf(
+		PHP_CONTROLLER_FORMAT,
+		tnp, tnp, tnp, tnc, tnp, tnc, tnc, tnc, tnc, tn, tnp, tnc, tnp, tnc, tnp, tnc, tnp, tnc,
+	)
+
+	err := WriteFile(fmt.Sprintf("%s%s.php", path, tnp), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
 }
 
 // templates生成
