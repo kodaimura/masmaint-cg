@@ -274,10 +274,10 @@ func (serv *sourceGeneratorPhp) generateApplication() error {
 	if err := serv.generateControllers(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateServices(); err != nil {
 		return err
 	}
+	/*
 	if err := serv.generateModels(); err != nil {
 		return err
 	}
@@ -447,6 +447,142 @@ func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path s
 		logger.LogError(err.Error())
 	}
 	return err
+}
+
+// Services生成
+func (serv *sourceGeneratorPhp) generateServices() error {
+	path := serv.path + "src/Application/Services/"
+	return serv.generateServicesFiles(path)
+}
+
+// Services内のファイル生成
+func (serv *sourceGeneratorPhp) generateServicesFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateServicesFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const PHP_SERVICE_FORMAT = 
+`
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Services;
+
+use App\Application\Models\Daos\%sDao;
+use App\Application\Models\Entities\%s;
+use Psr\Log\LoggerInterface;
+use Psr\Container\ContainerInterface;
+use Psr\Http\Message\ResponseInterface as Response;
+use Slim\Views\Twig;
+
+class %sService extends BaseService
+{
+
+    protected %sDao $%sDao;
+
+    public function __construct(ContainerInterface $container, LoggerInterface $logger, %sDao $%sDao)
+    {
+        parent::__construct($container, $logger);
+        $this->%sDao = $%sDao;
+    }
+
+    public function getAll(): array
+    {
+        return $this->%sDao->findAll();
+    }
+
+%s
+
+%s
+
+%s
+
+}
+`
+
+// Services内の*.php生成
+func (serv *sourceGeneratorPhp) generateServicesFile(table *dto.Table, path string) error {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf(
+		PHP_SERVICE_FORMAT,
+		tnp, tnp, tnp, tnp, tnc, tnp, tnc, tnc, tnc, tnc,
+		serv.generateServicesFileCodeCreate(table),
+		serv.generateServicesFileCodeUpdate(table),
+		serv.generateServicesFileCodeDelete(table),
+	)
+
+	err := WriteFile(fmt.Sprintf("%s%s.php", path, tnp), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+// ServicesのCreateメソッドプログラム生成
+func (serv *sourceGeneratorPhp) generateServicesFileCodeCreate(table *dto.Table) string {
+	tnc := SnakeToCamel(table.TableName)
+	tnp := SnakeToPascal(table.TableName)
+
+	code := fmt.Sprintf("\tpublic function create($data): %s\n\t{\n", tnp)
+	code += fmt.Sprintf("\t\t$%s = new %s();\n", tnc, tnp)
+
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			cn := col.ColumnName
+			cnp := SnakeToPascal(cn)
+			code += fmt.Sprintf("\t\t$%s->set%s($data['%s']);\n", tnc, cnp, cn)
+ 		}
+	}
+	code += fmt.Sprintf("\n\t\treturn $this->%sDao->create($%s);\n\t}", tnc, tnc)
+	return code
+}
+
+// ServicesのUpdateメソッドプログラム生成
+func (serv *sourceGeneratorPhp) generateServicesFileCodeUpdate(table *dto.Table) string {
+	tnc := SnakeToCamel(table.TableName)
+	tnp := SnakeToPascal(table.TableName)
+
+	code := fmt.Sprintf("\tpublic function update($data): %s\n\t{\n", tnp)
+	code += fmt.Sprintf("\t\t$%s = new %s();\n", tnc, tnp)
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey || col.IsUpdAble {
+			cn := col.ColumnName
+			cnp := SnakeToPascal(cn)
+			code += fmt.Sprintf("\t\t$%s->set%s($data['%s']);\n", tnc, cnp, cn)
+ 		}
+	}
+
+	code += fmt.Sprintf("\n\t\treturn $this->%sDao->update($%s);\n\t}", tnc, tnc)
+	return code
+}
+
+// ServicesのDeleteメソッドプログラム生成
+func (serv *sourceGeneratorPhp) generateServicesFileCodeDelete(table *dto.Table) string {
+	tnc := SnakeToCamel(table.TableName)
+	tnp := SnakeToPascal(table.TableName)
+
+	code := fmt.Sprintf("\tpublic function delete($data): %s\n\t{\n", tnp)
+	code += fmt.Sprintf("\t\t$%s = new %s();\n", tnc, tnp)
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			cn := col.ColumnName
+			cnp := SnakeToPascal(cn)
+			code += fmt.Sprintf("\t\t$%s->set%s($data['%s']);\n", tnc, cnp, cn)
+ 		}
+	}
+
+	code += fmt.Sprintf("\n\t\treturn $this->%sDao->delete($%s);\n\t}", tnc, tnc)
+	return code
 }
 
 // templates生成
