@@ -440,7 +440,7 @@ func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path s
 		tnp, tnp, tnp, tnc, tnp, tnc, tnc, tnc, tnc, tn, tnp, tnc, tnp, tnc, tnp, tnc, tnp, tnc,
 	)
 
-	err := WriteFile(fmt.Sprintf("%s%s.php", path, tnp), code)
+	err := WriteFile(fmt.Sprintf("%s%sController.php", path, tnp), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -517,7 +517,7 @@ func (serv *sourceGeneratorPhp) generateServicesFile(table *dto.Table, path stri
 		serv.generateServicesFileCodeDelete(table),
 	)
 
-	err := WriteFile(fmt.Sprintf("%s%s.php", path, tnp), code)
+	err := WriteFile(fmt.Sprintf("%s%sService.php", path, tnp), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
