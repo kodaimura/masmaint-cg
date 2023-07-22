@@ -277,11 +277,9 @@ func (serv *sourceGeneratorPhp) generateApplication() error {
 	if err := serv.generateServices(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateModels(); err != nil {
 		return err
 	}
-	*/
 
 	return nil
 }
@@ -583,6 +581,168 @@ func (serv *sourceGeneratorPhp) generateServicesFileCodeDelete(table *dto.Table)
 
 	code += fmt.Sprintf("\n\t\treturn $this->%sDao->delete($%s);\n\t}", tnc, tnc)
 	return code
+}
+
+// Models生成
+func (serv *sourceGeneratorPhp) generateModels() error {
+	path := serv.path + "src/Application/Models/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	if err := serv.generateEntities(); err != nil {
+		return err
+	}
+	/*
+	if err := serv.generateDaos(); err != nil {
+		return err
+	}
+	if err := serv.generateDaoImpls(); err != nil {
+		return err
+	}
+	*/
+	return nil
+}
+
+// Entities生成
+func (serv *sourceGeneratorPhp) generateEntities() error {
+	path := serv.path + "src/Application/Models/Entities/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateEntitiesFiles(path)
+}
+
+// Entities内のファイル生成
+func (serv *sourceGeneratorPhp) generateEntitiesFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateEntitiesFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// CSVフォーマットのカラム型からentityフィールド用の型取得
+func (serv *sourceGeneratorPhp) getEntityFieldType(col *dto.Column) string {
+	isNotNull := col.IsNotNull
+	isPrimaryKey := col.IsPrimaryKey
+	colType := col.ColumnType
+
+	if colType == "s" || colType == "t" {
+		if isNotNull || isPrimaryKey {
+			return "string"
+		}
+		return "?string"
+	}
+	if colType == "i" {
+		if isNotNull || isPrimaryKey {
+			return "int"
+		}
+		return "?int"
+	}
+	if colType == "f" {
+		if isNotNull || isPrimaryKey {
+			return "float"
+		}
+		return "?float"
+	}
+	return ""
+}
+
+// entityのセッタープログラム生成
+func (serv *sourceGeneratorPhp) generateEntitiesFileCodeSetter(col *dto.Column) string {
+	colType := serv.getEntityFieldType(col)
+	cnp := SnakeToPascal(col.ColumnName)
+	cnc := SnakeToCamel(col.ColumnName)
+
+	code := fmt.Sprintf("\tpublic function set%s($%s)\n\t{\n", cnp, cnc)
+
+	switch colType {
+	case "string", "?string":
+		code += fmt.Sprintf("\t\t$this->%s = $%s;\n", cnp, cnc)
+
+	case "int":
+		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n", cnp) +
+			fmt.Sprintf("\t\t} else if (filter_var($%s, FILTER_VALIDATE_INT) !== false) {\n", cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = (int) $%s;\n", cnc, cnc) +
+			fmt.Sprintf("\t\t} else {\n") + 
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n\t\t}\n", cnp)
+
+	case "?int":
+		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = null;\n", cnc) +
+			fmt.Sprintf("\t\t} else if (filter_var($%s, FILTER_VALIDATE_INT) !== false) {\n", cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = (int) $%s;\n", cnc, cnc) +
+			fmt.Sprintf("\t\t} else {\n") + 
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n\t\t}\n", cnp)
+
+	case "float":
+		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n", cnp) +
+			fmt.Sprintf("\t\t} else if (is_numeric($%s)) {\n", cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = (float) $%s;\n", cnc, cnc) +
+			fmt.Sprintf("\t\t} else {\n") + 
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n\t\t}\n", cnp)
+	case "?float":
+		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = null;\n", cnc) +
+			fmt.Sprintf("\t\t} else if (is_numeric($%s)) {\n", cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = (float) $%s;\n", cnc, cnc) +
+			fmt.Sprintf("\t\t} else {\n") + 
+			fmt.Sprintf("\t\t\tthrow new \\InvalidArgumentException(\"error: set%s\");\n\t\t}\n", cnp)
+	}
+
+	code += "\t}\n\n"
+	return code
+}
+
+// Entities内の*.php生成
+func (serv *sourceGeneratorPhp) generateEntitiesFile(table *dto.Table, path string) error {
+	code := "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Application\\Models\\Entities;\n\n" +
+		fmt.Sprintf(
+			"use JsonSerializable;\n\nclass %s implements JsonSerializable\n{\n", 
+			SnakeToPascal(table.TableName),
+		)
+
+	//フィールド
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\tprivate %s $%s;\n\n", serv.getEntityFieldType(&col), SnakeToCamel(col.ColumnName))
+	}
+
+	//ゲッター
+	for _, col := range table.Columns {
+		code += fmt.Sprintf(
+			"\tpublic function get%s(): %s\n\t{\n\t\treturn $this->%s;\n\t}\n\n",
+			SnakeToPascal(col.ColumnName), serv.getEntityFieldType(&col), SnakeToCamel(col.ColumnName),
+		)
+	}
+
+	//セッター
+	for _, col := range table.Columns {
+		code += serv.generateEntitiesFileCodeSetter(&col)
+	}
+
+	//jsonSerialize
+	code += "\t//json_encode()でエンコードされるときに呼ばれる\n" +
+		"\t#[\\ReturnTypeWillChange]\n" +
+		"\tpublic function jsonSerialize(): array\n\t{\n\t\treturn [\n"
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t\t'%s' => $this->%s,\n", col.ColumnName, SnakeToCamel(col.ColumnName))
+	}
+
+	code += "\t\t];\n\t}\n}"
+	err := WriteFile(fmt.Sprintf("%s%s.php", path, SnakeToPascal(table.TableName)), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
 }
 
 // templates生成
