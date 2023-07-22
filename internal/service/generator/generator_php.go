@@ -38,10 +38,10 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 	if err := serv.generateSettingFiles(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateApp(); err != nil {
 		return err
 	}
+	/*
 	if err := serv.generateSrc(); err != nil {
 		return err
 	}
@@ -107,6 +107,130 @@ func (serv *sourceGeneratorPhp) generateSettingFiles() error {
 	destination = serv.path + "composer.json"
 
 	err = CopyFile(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+// app生成
+func (serv *sourceGeneratorPhp) generateApp() error {
+	source := "_originalcopy_/php/app"
+	destination := serv.path + "app/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateAppFiles(destination)
+}
+
+// app内のファイル生成
+func (serv *sourceGeneratorPhp) generateAppFiles(path string) error {
+	if err := serv.generateAppFileDependencies(path); err != nil {
+		return err
+	}
+	if err := serv.generateAppFileMiddleware(path); err != nil {
+		return err
+	}
+	if err := serv.generateAppFileSettings(path); err != nil {
+		return err
+	}
+	if err := serv.generateAppFileRepositories(path); err != nil {
+		return err
+	}
+	if err := serv.generateAppFileRoutes(path); err != nil {
+		return err
+	}
+	return nil
+}
+
+// appのdependencies.php生成
+func (serv *sourceGeneratorPhp) generateAppFileDependencies(path string) error {
+	return nil
+}
+
+// appのmiddleware.php生成
+func (serv *sourceGeneratorPhp) generateAppFileMiddleware(path string) error {
+	return nil
+}
+
+// appのsettings.php生成
+func (serv *sourceGeneratorPhp) generateAppFileSettings(path string) error {
+	return nil
+}
+
+// appのrepositories.php生成
+func (serv *sourceGeneratorPhp) generateAppFileRepositories(path string) error {
+	code := "<?php\n\ndeclare(strict_types=1);\n\n"
+
+	for _, table := range *serv.tables {
+		code += fmt.Sprintf(
+			"use App\\Application\\Models\\Daos\\%sDao;\n",
+			SnakeToPascal(table.TableName),
+		)
+	}
+	for _, table := range *serv.tables {
+		code += fmt.Sprintf(
+			"use App\\Application\\Models\\DaoImpls\\%sDaoImpl;\n",
+			SnakeToPascal(table.TableName),
+		)
+	}
+	code += "use DI\\ContainerBuilder;\n\n"
+	code += "return function (ContainerBuilder $containerBuilder) {\n\n"
+	code += "\t$containerBuilder->addDefinitions([\n"
+
+	for _, table := range *serv.tables {
+		tnp := SnakeToPascal(table.TableName)
+		code += fmt.Sprintf("\t\t%sDao::class => \\DI\\autowire(%sDaoImpl::class),\n", tnp, tnp)
+	}
+	code += "\t]);\n};"
+
+	err := WriteFile(fmt.Sprintf("%srepositories.php", path), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+// appのroutes.php生成
+func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
+	code := "<?php\n\ndeclare(strict_types=1);\n\n"
+	code += "use App\\Application\\Controllers\\IndexController;\n"
+
+	for _, table := range *serv.tables {
+		code += fmt.Sprintf(
+			"use App\\Application\\Controllers\\%sController;\n",
+			SnakeToPascal(table.TableName),
+		)
+	}
+	code += "use Psr\\Http\\Message\\ResponseInterface as Response;\n"
+	code += "use Psr\\Http\\Message\\ServerRequestInterface as Request;\n"
+	code += "use Slim\\App;\n"
+	code += "use Slim\\Interfaces\\RouteCollectorProxyInterface as Group;\n\n"
+	code += "return function (App $app) {\n"
+	code += "\t$app->options('/{routes:.*}', function (Request $request, Response $response) {\n"
+	code += "\t\t// CORS Pre-Flight OPTIONS Request Handler\n"
+	code += "\t\treturn $response;\n\t});\n\n"
+	code += "\t$app->group('/mastertables', function (Group $group) {\n"
+	code += "\t\t$group->get('', IndexController::class. ':indexPage');\n"
+	code += "\t\t$group->get('/', IndexController::class. ':indexPage');\n"
+
+	for _, table := range *serv.tables {
+		tn := table.TableName
+		tnp := SnakeToPascal(tn)
+		code += fmt.Sprintf("\n\t\t$group->get('/%s', %sController::class. ':%sPage');\n", tn, tnp, tn)
+        code += fmt.Sprintf("\t\t$group->get('/api/%s', %sController::class. ':get%s');\n", tn, tnp, tnp)
+        code += fmt.Sprintf("\t\t$group->post('/api/%s', %sController::class. ':post%s');\n", tn, tnp, tnp)
+        code += fmt.Sprintf("\t\t$group->put('/api/%s', %sController::class. ':put%s');\n", tn, tnp, tnp)
+        code += fmt.Sprintf("\t\t$group->delete('/api/%s', %sController::class. ':delete%s');\n", tn, tnp, tnp)
+	}
+
+	code += "\t});\n};"
+
+	err := WriteFile(fmt.Sprintf("%sroutes.php", path), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
