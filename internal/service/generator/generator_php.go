@@ -41,11 +41,9 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 	if err := serv.generateApp(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateSrc(); err != nil {
 		return err
 	}
-	*/
 	if err := serv.generatePublic(); err != nil {
 		return err
 	}
@@ -235,6 +233,69 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 		logger.LogError(err.Error())
 	}
 	return err
+}
+
+// src生成
+func (serv *sourceGeneratorPhp) generateSrc() error {
+	source := "_originalcopy_/php/src"
+	destination := serv.path + "src/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateApplication()
+}
+
+// Application生成
+func (serv *sourceGeneratorPhp) generateApplication() error {
+	if err := serv.generateHandlers(); err != nil {
+		return err
+	}
+	if err := serv.generateMiddleware(); err != nil {
+		return err
+	}
+	if err := serv.generateResponseEmitter(); err != nil {
+		return err
+	}
+	if err := serv.generateSettings(); err != nil {
+		return err
+	}
+	/*
+	if err := serv.generateControllers(); err != nil {
+		return err
+	}
+	if err := serv.generateServices(); err != nil {
+		return err
+	}
+	if err := serv.generateModels(); err != nil {
+		return err
+	}
+	*/
+
+	return nil
+}
+
+// Handlers生成
+func (serv *sourceGeneratorPhp) generateHandlers() error {
+	return nil
+}
+
+// Middleware生成
+func (serv *sourceGeneratorPhp) generateMiddleware() error {
+	return nil
+}
+
+// ResponseEmitter生成
+func (serv *sourceGeneratorPhp) generateResponseEmitter() error {
+	return nil
+}
+
+// Settings生成
+func (serv *sourceGeneratorPhp) generateSettings() error {
+	return nil
 }
 
 // templates生成
