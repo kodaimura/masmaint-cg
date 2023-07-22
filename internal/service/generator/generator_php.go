@@ -598,11 +598,10 @@ func (serv *sourceGeneratorPhp) generateModels() error {
 	if err := serv.generateDaos(); err != nil {
 		return err
 	}
-	/*
 	if err := serv.generateDaoImpls(); err != nil {
 		return err
 	}
-	*/
+
 	return nil
 }
 
@@ -803,6 +802,188 @@ func (serv *sourceGeneratorPhp) generateDaosFile(table *dto.Table, path string) 
 		logger.LogError(err.Error())
 	}
 	return err
+}
+
+// DaoImpls生成
+func (serv *sourceGeneratorPhp) generateDaoImpls() error {
+	path := serv.path + "src/Application/Models/DaoImpls/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateDaoImplsFiles(path)
+}
+
+// DaoImpls内のファイル生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFiles(path string) error {
+	for _, table := range *serv.tables {
+		if err := serv.generateDaoImplsFile(&table, path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+const PHP_DAOIMPL_FORMAT = 
+`
+<?php
+
+declare(strict_types=1);
+
+namespace App\Application\Models\DaoImpls;
+
+use App\Application\Models\Daos\%sDao;
+use App\Application\Models\Entities\%s;
+
+use \PDOException;
+use \PDO;
+use Psr\Log\LoggerInterface;
+
+class %sDaoImpl implements %sDao
+{
+
+    private LoggerInterface $logger;
+    private PDO $db;
+
+    public function __construct(LoggerInterface $logger, PDO $db){
+        $this->logger = $logger;
+        $this->db = $db;
+    }
+
+%s
+
+%s
+
+%s
+
+%s
+
+%s
+}
+`
+// DaoImpls内の*DaoImpl.php生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path string) error {
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf(
+		PHP_DAOIMPL_FORMAT,
+		tnp, tnp, tnp, tnp
+		serv.generateDaoImplsFileCodeFindAll(table),
+		serv.generateDaoImplsFileCodeFindOne(table),
+		serv.generateDaoImplsFileCodeCreate(table),
+		serv.generateDaoImplsFileCodeUpdate(table),
+		serv.generateDaoImplsFileCodeDelete(table),
+	)
+
+	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
+// SELECT ORDER BYで指定するpkのカンマ区切り文字列生成
+func (serv *sourceGeneratorPhp) concatPrimaryKeyWithCommas(cols []dto.Column) string {
+	var ls []string
+	for _, col := range cols {
+		if col.IsPrimaryKey {
+			ls = append(ls, col.ColumnName)
+		}
+	}
+	return strings.Join(ls, ", ")
+}
+
+// DaoImplのfindAllメソッド生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindAll(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := "\tpublic function findAll(): array\n\t{\n"
+	code += "\t\t\t$query = \n\t\t\t\"SELECT\n"
+
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+		}
+	}
+	code += fmt.Sprintf(
+		"\t\t\tFROM %s\n\t\t\tORDER BY %s ASC\";\n\n", 
+		tn, serv.concatPrimaryKeyWithCommas(table.Columns),
+	)
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n" +
+		"\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += "\t\t$result = $stmt->fetchAll(PDO::FETCH_ASSOC);\n\t\t$ret = [];\n"
+	code += "\t\tforeach ($result as $row) {\n"
+	code += fmt.Sprintf("\t\t\t$x = new %s();\n", tnp)
+
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t\t$x->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+	}
+	code += "\n\t\t\t$ret[] = $x;\n\t\t}\n\n\t\treturn $ret;\n\t}"
+
+	return code
+}
+
+// DaoImplのfindOneメソッド生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf("\tpublic function findOne(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code += "\t\t\t$query = \n\t\t\t\"SELECT\n"
+
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+		}
+	}
+	code += "\t\t\tFROM %s\n\t\t\tWHERE "
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			if isFirst {
+				code += fmt.Sprintf("%s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t\t  AND %s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+			}
+		}
+	}
+
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf(
+				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
+				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
+			))
+		}
+	}
+
+	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
+	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
+
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t$ret->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+	}
+	code += "\n\t\treturn $ret;\n\t}"
+
+	return code
 }
 
 // templates生成
