@@ -1152,9 +1152,60 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
-	code += "\n\t\treturn $ret;\n\t}"
+	code += "\t\treturn $ret;\n\t}"
 
 	return code
+}
+
+// DaoImplのdeleteメソッド生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf("\tpublic function delete(%s, $%s)\n\t{\n", tnp, tnc)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"DELETE FROM %s\n\t\t\tWHERE ", tn)
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			if isFirst {
+				code += fmt.Sprintf("%s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t\t  AND %s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+			}
+		}
+	}
+	code += "\";\n\n"
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf(
+				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
+				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
+			))
+		}
+	}
+
+	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += "\t\treturn;\n\t}"
+
+	return code
+}
+
+// AUTO_INCREMENTのカラム取得
+// このシステムではPK・入力不可・整数型のカラムはAUTO_INCREMENTのカラムと判定する
+func (serv *sourceGeneratorPhp) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool) {
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey && !col.IsInsAble && (col.ColumnType == "i") {
+			return col, true
+		}
+	}
+	return dto.Column{}, false
 }
 
 // DaoImplのcreateメソッド生成(MYSQLの8.0.21以前用)
@@ -1204,6 +1255,12 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate_MySQL(table *dto.
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	aicol, hasAICol := serv.getAutoIncrementColumn(table)
+	if hasAICol {
+		code += "\t\t$lastInsertId = $this->db->lastInsertId();\n" + 
+			fmt.Sprintf("\t\t$%s->set%s($lastInsertId);\n\n", tnc, SnakeToPascal(aicol.ColumnName))
+	}
 
 	code += fmt.Sprintf("\t\treturn $this->findOne($%s);\n\t}", tnc)
 
@@ -1259,46 +1316,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate_MySQL(table *dto.
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
 	code += fmt.Sprintf("\t\treturn $this->findOne($%s);\n\t}", tnc)
-
-	return code
-}
-
-// DaoImplのdeleteメソッド生成
-func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-
-	code := fmt.Sprintf("\tpublic function delete(%s, $%s)\n\t{\n", tnp, tnc)
-	code += fmt.Sprintf("\t\t\t$query = \n\t\t\t\"DELETE FROM %s\n\t\t\tWHERE ", tn)
-
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			if isFirst {
-				code += fmt.Sprintf("%s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
-				isFirst = false
-			} else {
-				code += fmt.Sprintf("\n\t\t\t  AND %s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
-			}
-		}
-	}
-	code += "\";\n\n"
-	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
-
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf(
-				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
-		}
-	}
-
-	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
-
-	code += "\t\treturn;\n\t}"
 
 	return code
 }
