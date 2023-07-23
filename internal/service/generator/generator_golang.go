@@ -181,7 +181,7 @@ func SetRouter(r *gin.Engine) {
 }
 `
 
-// controller内のrouter.go生成
+// controller/router.go生成
 func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) error {
 	code := ""
 	for _, table := range *serv.tables {
@@ -206,7 +206,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) err
 	return err
 }
 
-// controller内の*.go生成
+// controller/*.go生成
 func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path string) error {
 	code := "package controller\n\nimport (\n\t\"github.com/gin-gonic/gin\"\n\n" +
 		"\tcerror \"masmaint/core/error\"\n\t\"masmaint/service\"\n\t\"masmaint/dto\"\n)\n\n\n"
@@ -216,12 +216,7 @@ func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
-	code += fmt.Sprintf("type %sService interface {\n", tnp) +
-		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
-		fmt.Sprintf("\tCreate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tUpdate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tDelete(%sDto *dto.%sDto) error\n", tni, tnp) +
-		"}\n\n"
+	code += serv.generateCodeServiceInterface(table) + "\n"
 
 	code += fmt.Sprintf("type %sController struct {\n", tnc) +
 		fmt.Sprintf("\t%sServ %sService\n", tni, tnp) +
@@ -243,6 +238,18 @@ func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 		logger.LogError(err.Error())
 	}
 	return err
+}
+
+// service interfaceプログラム生成
+func (serv *sourceGeneratorGolang) generateCodeServiceInterface(table *dto.Table) string {
+	tnc := SnakeToCamel(table.TableName)
+	tnp := SnakeToPascal(table.TableName)
+	return fmt.Sprintf("type %sService interface {\n", tnp) +
+		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
+		fmt.Sprintf("\tCreate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tUpdate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tDelete(%sDto *dto.%sDto) error\n", tni, tnp) +
+		"}\n"
 }
 
 // controllerのGetPageメソッドプログラム生成
@@ -345,7 +352,7 @@ func (serv *sourceGeneratorGolang) generateDtoFiles(path string) error {
 	return nil
 }
 
-// dto内の*.go生成
+// dto/*.go生成
 func (serv *sourceGeneratorGolang) generateDtoFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -388,7 +395,7 @@ func (serv *sourceGeneratorGolang) generateServiceFiles(path string) error {
 	return nil
 }
 
-// service内の*.go生成
+// service/*.go生成
 func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path string) error {
 	code := "package service\n\nimport (\n" +
 		"\tcerror \"masmaint/core/error\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
@@ -399,13 +406,7 @@ func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
-	code += fmt.Sprintf("type %sDao interface {\n", tnp) +
-		fmt.Sprintf("\tSelectAll() ([]entity.%s, error)\n", tnp) +
-		fmt.Sprintf("\tSelect(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tInsert(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tUpdate(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tDelete(%s *entity.%s) error\n", tni, tnp) +
-		"}\n\n"
+	code += serv.generateCodeDaoInterface(table) + "\n"
 
 	code += fmt.Sprintf("type %sService struct {\n", tnc) +
 		fmt.Sprintf("\t%sDao %sDao\n", tni, tnp) +
@@ -427,6 +428,19 @@ func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 		logger.LogError(err.Error())
 	}
 	return err
+}
+
+// dao interfaceプログラム生成
+func (serv *sourceGeneratorGolang) generateCodeDaoInterface(table *dto.Table) error {
+	tnp := SnakeToPascal(table.TableName)
+	tni := GetSnakeInitial(table.TableName)
+
+	return fmt.Sprintf("type %sDao interface {\n", tnp) +
+		fmt.Sprintf("\tSelectAll() ([]entity.%s, error)\n", tnp) +
+		fmt.Sprintf("\tSelect(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tInsert(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tUpdate(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
+		fmt.Sprintf("\tDelete(%s *entity.%s) error\n", tni, tnp) + "}\n"
 }
 
 // serviceのGetAllメソッドプログラム生成
@@ -586,7 +600,6 @@ func (serv *sourceGeneratorGolang) generateModel() error {
 	if err := serv.generateEntity(); err != nil {
 		return err
 	}
-
 	if err := serv.generateDao(); err != nil {
 		return err
 	}
@@ -643,7 +656,7 @@ func (serv *sourceGeneratorGolang) getEntityFieldType(col *dto.Column) string {
 	return ""
 }
 
-// entityの*.go生成
+// entity/*.go生成
 func (serv *sourceGeneratorGolang) generateEntityFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnp := SnakeToPascal(tn)
@@ -781,7 +794,7 @@ func (serv *sourceGeneratorGolang) generateDaoFiles(path string) error {
 	return nil
 }
 
-// daoの*.go生成
+// dao/*.go生成
 func (serv *sourceGeneratorGolang) generateDaoFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -858,8 +871,8 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeSelectAll(table *dto.Table
 		code += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, cnp)
 	}
 	code += fmt.Sprintf("\t\t)\n\t\tif err != nil {\n\t\t\tbreak\n\t\t}\n\t\tret = append(ret, %s)\n\t}\n\n", tni)
-
 	code += "\treturn ret, err\n}\n"
+
 	return code
 }
 
@@ -1031,6 +1044,40 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate(table *dto.Table) s
 	return code
 }
 
+// daoのDeleteメソッド生成
+func (serv *sourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	code := fmt.Sprintf("func (rep *%sDao) Delete(%s *entity.%s) error {\n", tnc, tni, tnp) +
+		"\t_, err := rep.db.Exec(\n"
+
+	code += fmt.Sprintf("\t\t`DELETE FROM %s\n\t\t WHERE ", tn)
+
+	bindCount := 0
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			bindCount += 1
+			if bindCount == 1 {
+				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+			} else {
+				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
+			}
+		}
+	}
+	code += "`,\n"
+
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
+		}
+	}
+	code += "\t)\n\n\treturn err\n}\n" 
+
+	return code
+}
+
 // AUTO_INCREMENTのカラム取得
 // このシステムではPK・入力不可・整数型のカラムはAUTO_INCREMENTのカラムと判定する
 func (serv *sourceGeneratorGolang) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool) {
@@ -1144,40 +1191,6 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate_MySQL(table *dto.Ta
 	return code
 }
 
-// daoのDeleteメソッド生成
-func (serv *sourceGeneratorGolang) generateDaoFileCodeDelete(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Delete(%s *entity.%s) error {\n", tnc, tni, tnp) +
-		"\t_, err := rep.db.Exec(\n"
-
-	code += fmt.Sprintf("\t\t`DELETE FROM %s\n\t\t WHERE ", tn)
-
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("%s = %s", col.ColumnName, serv.getBindVariable(bindCount))
-			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, serv.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-	code += "\t)\n\n\treturn err\n}\n" 
-
-	return code
-}
-
 // web生成
 func (serv *sourceGeneratorGolang) generateWeb() error {
 	source := "_originalcopy_/golang/web"
@@ -1204,7 +1217,6 @@ func (serv *sourceGeneratorGolang) generateStatic() error {
 	if err := serv.generateCss(); err != nil {
 		return err
 	}
-
 	if err := serv.generateJs(); err != nil {
 		return err
 	}
@@ -1214,6 +1226,8 @@ func (serv *sourceGeneratorGolang) generateStatic() error {
 
 // css生成
 func (serv *sourceGeneratorGolang) generateCss() error {
+	//path := serv.path + "public/static/css/"
+	// _originalcopy_からコピー
 	return nil
 }
 
@@ -1229,7 +1243,7 @@ func (serv *sourceGeneratorGolang) generateJs() error {
 	return serv.generateJsFiles(path)
 }
 
-// jsの*.js生成
+// js/*.js生成
 func (serv *sourceGeneratorGolang) generateJsFiles(path string) error {
 	for _, table := range *serv.tables {
 		code := GenerateJsCode(&table)
@@ -1264,6 +1278,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFiles(path string) error {
 	if err := serv.generateTemplateFileIndex(path); err != nil {
 		return err
 	}
+
 	for _, table := range *serv.tables {
 		if err := serv.generateTemplateFile(&table, path); err != nil {
 			return err
@@ -1272,7 +1287,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFiles(path string) error {
 	return nil
 }
 
-// template内の_header.html生成
+// template/_header.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileHeader(path string) error {
 	content := GenerateHtmlCodeHeader(serv.tables)
 	code := `{{define "header"}}` + content + `{{end}}`
@@ -1284,7 +1299,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileHeader(path string) error
 	return err
 }
 
-// template内の_footer.html生成
+// template/_footer.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileFooter(path string) error {
 	content := GenerateHtmlCodeFooter()
 	code := `{{define "footer"}}` + content + `{{end}}`
@@ -1296,7 +1311,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileFooter(path string) error
 	return err
 }
 
-// template内のindex.html生成
+// template/index.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFileIndex(path string) error {
 	content := "\n"
 	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
@@ -1308,7 +1323,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileIndex(path string) error 
 	return err
 }
 
-// template内の*.html生成
+// template/*.html生成
 func (serv *sourceGeneratorGolang) generateTemplateFile(table *dto.Table, path string) error {
 	content := GenerateHtmlCodeMain(table)
 	code := `{{template "header" .}}` + content + `{{template "footer" .}}`
