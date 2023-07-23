@@ -946,7 +946,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
 		}
 	}
-	code += "\t\t\tFROM %s\n\t\t\tWHERE "
+	code += fmt.Sprintf("\t\t\tFROM %s\n\t\t\tWHERE ", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -959,11 +959,81 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 			}
 		}
 	}
-
+	code += "\";\n\n"
 	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
 
 	for _, col := range table.Columns {
 		if col.IsPrimaryKey {
+			code += fmt.Sprintf(
+				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
+				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
+			))
+		}
+	}
+
+	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
+	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
+
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t$ret->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+	}
+	code += "\n\t\treturn $ret;\n\t}"
+
+	return code
+}
+
+// DaoImplのcreateメソッド生成
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf("\tpublic function create(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code += fmt.Sprintf("\t\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+			}
+		}
+	}
+	code += "\t\t\t) VALUES (\n"
+
+	isFirst = true
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("\t\t\t\t:%s\n", col.ColumnName)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\t\t\t\t,:%s\n", col.ColumnName)
+			}
+		}
+	}
+
+	code += "\t\t\t) RETURNING\n"
+
+	for i, col := range table.Columns {
+		if i == 0 {
+			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+		} else {
+			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+		}
+	}
+
+	code += "\";\n\n"
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
+
+	for _, col := range table.Columns {
+		if col.IsInsAble {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
 				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
