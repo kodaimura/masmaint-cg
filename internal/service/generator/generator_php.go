@@ -35,7 +35,10 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 	if err := serv.generateVar(); err != nil {
 		return err
 	}
-	if err := serv.generateSettingFiles(); err != nil {
+	if err := serv.generateHtaccess(); err != nil {
+		return err
+	}
+	if err := serv.generateComposerJson(); err != nil {
 		return err
 	}
 	if err := serv.generateApp(); err != nil {
@@ -90,21 +93,24 @@ func (serv *sourceGeneratorPhp) generateVar() error {
 	return err
 }
 
-// .htaccess/composer.json生成
-func (serv *sourceGeneratorPhp) generateSettingFiles() error {
+// .htaccess生成
+func (serv *sourceGeneratorPhp) generateHtaccess() error {
 	source := "_originalcopy_/php/.htaccess"
 	destination := serv.path + ".htaccess"
 
 	err := CopyFile(source, destination)
 	if err != nil {
 		logger.LogError(err.Error())
-		return err
 	}
+	return err
+}
 
-	source = "_originalcopy_/php/composer.json"
-	destination = serv.path + "composer.json"
+// composer.json生成
+func (serv *sourceGeneratorPhp) generateComposerJson() error {
+	source := "_originalcopy_/php/composer.json"
+	destination := serv.path + "composer.json"
 
-	err = CopyFile(source, destination)
+	err := CopyFile(source, destination)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -145,22 +151,25 @@ func (serv *sourceGeneratorPhp) generateAppFiles(path string) error {
 	return nil
 }
 
-// appのdependencies.php生成
+// app/dependencies.php生成
 func (serv *sourceGeneratorPhp) generateAppFileDependencies(path string) error {
+	// _originalcopy_からコピー
 	return nil
 }
 
-// appのmiddleware.php生成
+// app/middleware.php生成
 func (serv *sourceGeneratorPhp) generateAppFileMiddleware(path string) error {
+	// _originalcopy_からコピー
 	return nil
 }
 
-// appのsettings.php生成
+// app/settings.php生成
 func (serv *sourceGeneratorPhp) generateAppFileSettings(path string) error {
+	// _originalcopy_からコピー
 	return nil
 }
 
-// appのrepositories.php生成
+// app/repositories.php生成
 func (serv *sourceGeneratorPhp) generateAppFileRepositories(path string) error {
 	code := "<?php\n\ndeclare(strict_types=1);\n\n"
 
@@ -193,7 +202,7 @@ func (serv *sourceGeneratorPhp) generateAppFileRepositories(path string) error {
 	return err
 }
 
-// appのroutes.php生成
+// app/routes.php生成
 func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 	code := "<?php\n\ndeclare(strict_types=1);\n\n"
 	code += "use App\\Application\\Controllers\\IndexController;\n"
@@ -226,7 +235,6 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
         code += fmt.Sprintf("\t\t$group->put('/api/%s', %sController::class. ':put%s');\n", tn, tnp, tnp)
         code += fmt.Sprintf("\t\t$group->delete('/api/%s', %sController::class. ':delete%s');\n", tn, tnp, tnp)
 	}
-
 	code += "\t});\n};"
 
 	err := WriteFile(fmt.Sprintf("%sroutes.php", path), code)
@@ -238,15 +246,8 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 
 // src生成
 func (serv *sourceGeneratorPhp) generateSrc() error {
-	path := serv.path + "src/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
-		return err
-	}
-
-	source := "_originalcopy_/php/src/Application"
-	destination := serv.path + "src/Application"
+	source := "_originalcopy_/php/src"
+	destination := serv.path + "src"
 
 	err := CopyDir(source, destination)
 	if err != nil {
@@ -286,21 +287,29 @@ func (serv *sourceGeneratorPhp) generateApplication() error {
 
 // Handlers生成
 func (serv *sourceGeneratorPhp) generateHandlers() error {
+	//path := serv.path + "src/Application/Handlers/"
+	// _originalcopy_からコピー
 	return nil
 }
 
 // Middleware生成
 func (serv *sourceGeneratorPhp) generateMiddleware() error {
+	//path := serv.path + "src/Application/Middleware/"
+	// _originalcopy_からコピー
 	return nil
 }
 
 // ResponseEmitter生成
 func (serv *sourceGeneratorPhp) generateResponseEmitter() error {
+	//path := serv.path + "src/Application/Emitter/"
+	// _originalcopy_からコピー
 	return nil
 }
 
 // Settings生成
 func (serv *sourceGeneratorPhp) generateSettings() error {
+	//path := serv.path + "src/Application/Settings/"
+	// _originalcopy_からコピー
 	return nil
 }
 
@@ -312,11 +321,29 @@ func (serv *sourceGeneratorPhp) generateControllers() error {
 
 // Controllers内のファイル生成
 func (serv *sourceGeneratorPhp) generateControllersFiles(path string) error {
+	if err := serv.generateControllersFileBase(path); err != nil {
+		return err
+	}
+	if err := serv.generateControllersFileIndex(path); err != nil {
+		return err
+	}
 	for _, table := range *serv.tables {
 		if err := serv.generateControllersFile(&table, path); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// Controllers/BaseController.php生成
+func (serv *sourceGeneratorPhp) generateControllersFileBase(path string) error {
+	// _originalcopy_からコピー
+	return nil
+}
+
+// Controllers/IndexController.php生成
+func (serv *sourceGeneratorPhp) generateControllersFileIndex(path string) error {
+	// _originalcopy_からコピー
 	return nil
 }
 
@@ -428,7 +455,7 @@ class %sController extends BaseController
 }
 `
 
-// Controllers内の*Controller.php生成
+// Controllers/*Controller.php生成
 func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -454,11 +481,21 @@ func (serv *sourceGeneratorPhp) generateServices() error {
 
 // Services内のファイル生成
 func (serv *sourceGeneratorPhp) generateServicesFiles(path string) error {
+	if err := serv.generateServicesFileBase(path); err != nil {
+		return err
+	}
+
 	for _, table := range *serv.tables {
 		if err := serv.generateServicesFile(&table, path); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// Services/BaseService.php生成
+func (serv *sourceGeneratorPhp) generateServicesFileBase(path string) error {
+	// _originalcopy_からコピー
 	return nil
 }
 
@@ -501,7 +538,7 @@ class %sService extends BaseService
 }
 `
 
-// Services内の*Service.php生成
+// Services/*Service.php生成
 func (serv *sourceGeneratorPhp) generateServicesFile(table *dto.Table, path string) error {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -700,7 +737,7 @@ func (serv *sourceGeneratorPhp) generateEntitiesFileCodeSetter(col *dto.Column) 
 	return code
 }
 
-// Entities内の*.php生成
+// Entities/*.php生成
 func (serv *sourceGeneratorPhp) generateEntitiesFile(table *dto.Table, path string) error {
 	code := "<?php\n\ndeclare(strict_types=1);\n\nnamespace App\\Application\\Models\\Entities;\n\n" +
 		fmt.Sprintf(
@@ -785,7 +822,7 @@ interface %sDao
     public function delete(%s $%s);
 }
 `
-// Daos内の*Dao.php生成
+// Daos/*Dao.php生成
 func (serv *sourceGeneratorPhp) generateDaosFile(table *dto.Table, path string) error {
 	tnc := SnakeToCamel(table.TableName)
 	tnp := SnakeToPascal(table.TableName)
@@ -859,7 +896,7 @@ class %sDaoImpl implements %sDao
 %s
 }
 `
-// DaoImpls内の*DaoImpl.php生成
+// DaoImplsの*DaoImpl.php生成
 func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path string) error {
 	tnp := SnakeToPascal(table.TableName)
 
@@ -1266,6 +1303,81 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table)
 	return code
 }
 
+// public生成
+func (serv *sourceGeneratorPhp) generatePublic() error {
+	source := "_originalcopy_/php/public"
+	destination := serv.path + "public/"
+
+	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateStatic()
+}
+
+// static生成
+func (serv *sourceGeneratorPhp) generateStatic() error {
+	if err := serv.generateStaticFileHtaccess(); err != nil {
+		return err
+	}
+	if err := serv.generateStaticFileIndex(); err != nil {
+		return err
+	}
+	if err := serv.generateCss(); err != nil {
+		return err
+	}
+	if err := serv.generateJs(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// static/.htaccess生成
+func (serv *sourceGeneratorPhp) generateStaticFileHtaccess() error {
+	// _originalcopy_からコピー
+	return nil
+}
+
+// static/index.php生成
+func (serv *sourceGeneratorPhp) generateStaticFileIndex() error {
+	// _originalcopy_からコピー
+	return nil
+}
+
+// css生成
+func (serv *sourceGeneratorPhp) generateCss() error {
+	//path := serv.path + "public/static/css/"
+	// _originalcopy_からコピー
+	return nil
+}
+
+// js生成
+func (serv *sourceGeneratorPhp) generateJs() error {
+	path := serv.path + "public/static/js/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	return serv.generateJsFiles(path)
+}
+
+// js/*.js生成
+func (serv *sourceGeneratorPhp) generateJsFiles(path string) error {
+	for _, table := range *serv.tables {
+		code := GenerateJsCode(&table)
+		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
+			logger.LogError(err.Error())
+			return err
+		}
+	}
+	return nil
+}
+
 // templates生成
 func (serv *sourceGeneratorPhp) generateTemplates() error {
 	path := serv.path + "templates/"
@@ -1294,63 +1406,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFiles(path string) error {
 	return nil
 }
 
-// public生成
-func (serv *sourceGeneratorPhp) generatePublic() error {
-	source := "_originalcopy_/php/public"
-	destination := serv.path + "public/"
-
-	err := CopyDir(source, destination)
-	if err != nil {
-		logger.LogError(err.Error())
-		return err
-	}
-
-	return serv.generateStatic()
-}
-
-// static生成
-func (serv *sourceGeneratorPhp) generateStatic() error {
-	if err := serv.generateCss(); err != nil {
-		return err
-	}
-
-	if err := serv.generateJs(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// css生成
-func (serv *sourceGeneratorPhp) generateCss() error {
-	return nil
-}
-
-// js生成
-func (serv *sourceGeneratorPhp) generateJs() error {
-	path := serv.path + "public/static/js/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
-		return err
-	}
-
-	return serv.generateJsFiles(path)
-}
-
-// jsの*.js生成
-func (serv *sourceGeneratorPhp) generateJsFiles(path string) error {
-	for _, table := range *serv.tables {
-		code := GenerateJsCode(&table)
-		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
-			logger.LogError(err.Error())
-			return err
-		}
-	}
-	return nil
-}
-
-// templates内のbase.html生成
+// templates/base.html生成
 func (serv *sourceGeneratorPhp) generateTemplatesFileBase(path string) error {
 	code := fmt.Sprintf(
 		"%s\n\t{%s block content %s}{%s endblock %s}\n%s",
@@ -1366,7 +1422,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFileBase(path string) error {
 	return err
 }
 
-// templates内のindex.html生成
+// templates/index.html生成
 func (serv *sourceGeneratorPhp) generateTemplatesFileIndex(path string) error {
 	code := fmt.Sprintf(
 		"{%s extends 'base.html' %s}\n\n{%s block content %s}\n{%s endblock %s}",
@@ -1380,7 +1436,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFileIndex(path string) error {
 	return err
 }
 
-// templates内の*.html生成
+// templates/*.html生成
 func (serv *sourceGeneratorPhp) generateTemplatesFile(table *dto.Table, path string) error {
 	code := fmt.Sprintf(
 		"{%s extends 'base.html' %s}\n\n{%s block content %s}%s{%s endblock %s}",
