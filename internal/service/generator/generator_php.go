@@ -7,7 +7,7 @@ import (
 
 	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/shared/dto"
-	//"masmaint-cg/internal/shared/constant"
+	"masmaint-cg/internal/shared/constant"
 )
 
 
@@ -863,13 +863,25 @@ class %sDaoImpl implements %sDao
 func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path string) error {
 	tnp := SnakeToPascal(table.TableName)
 
+	codeCreate := ""
+	codeUpdate := ""
+
+	if serv.rdbms == constant.MYSQL {
+		// RETURNING が使えない場合
+		codeCreate = serv.generateDaoImplsFileCodeCreate_MySQL(table)
+		codeUpdate = serv.generateDaoImplsFileCodeUpdate_MySQL(table)
+	} else {
+		codeCreate = serv.generateDaoImplsFileCodeCreate(table)
+		codeUpdate = serv.generateDaoImplsFileCodeUpdate(table)
+	}
+
 	code := fmt.Sprintf(
 		PHP_DAOIMPL_FORMAT,
 		tnp, tnp, tnp, tnp,
 		serv.generateDaoImplsFileCodeFindAll(table),
 		serv.generateDaoImplsFileCodeFindOne(table),
-		serv.generateDaoImplsFileCodeCreate(table),
-		serv.generateDaoImplsFileCodeUpdate(table),
+		codeCreate,
+		codeUpdate,
 		serv.generateDaoImplsFileCodeDelete(table),
 	)
 
@@ -966,7 +978,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 			))
 		}
 	}
-
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
@@ -1014,7 +1025,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 			}
 		}
 	}
-
 	code += "\t\t\t) RETURNING"
 
 	for i, col := range table.Columns {
@@ -1024,7 +1034,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 			code += fmt.Sprintf("\n\t\t\t\t,%s", col.ColumnName)
 		}
 	}
-
 	code += "\";\n\n"
 	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
 
@@ -1036,7 +1045,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 			))
 		}
 	}
-
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
@@ -1058,7 +1066,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 	tnp := SnakeToPascal(tn)
 
 	code := fmt.Sprintf("\tpublic function update(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
-	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET\n", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -1071,7 +1079,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 			}
 		}
 	}
-	
 	code += "\t\t\tWHERE "
 
 	isFirst = true
@@ -1085,8 +1092,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 			}
 		}
 	}
-
-	code += "\n\t\t\t) RETURNING"
+	code += "\n\t\t\tRETURNING"
 
 	for i, col := range table.Columns {
 		if i == 0 {
@@ -1095,7 +1101,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 			code += fmt.Sprintf("\n\t\t\t\t,%s", col.ColumnName)
 		}
 	}
-
 	code += "\";\n\n"
 	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
 
@@ -1107,17 +1112,116 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 			))
 		}
 	}
-
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
-	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
-	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
+	code += "\n\t\treturn $ret;\n\t}"
+
+	return code
+}
+
+// DaoImplのcreateメソッド生成(MYSQLの8.0.21以前用)
+// RETURNINGを使わない
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate_MySQL(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf("\tpublic function create(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+			}
+		}
+	}
+	code += "\t\t\t) VALUES (\n"
+
+	isFirst = true
+	for _, col := range table.Columns {
+		if col.IsInsAble {
+			if isFirst {
+				code += fmt.Sprintf("\t\t\t\t:%s\n", col.ColumnName)
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\t\t\t\t,:%s\n", col.ColumnName)
+			}
+		}
+	}
+	code += "\t\t\t)\";\n\n"
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
 
 	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t$ret->set%s($result['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+		if col.IsInsAble {
+			code += fmt.Sprintf(
+				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
+				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
+			))
+		}
 	}
-	code += "\n\t\treturn $ret;\n\t}"
+	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += fmt.Sprintf("\t\treturn $this->findOne($%s);\n\t}", tnc)
+
+	return code
+}
+
+// DaoImplのupdateメソッド生成(MYSQLの8.0.21以前用)
+// RETURNINGを使わない
+func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate_MySQL(table *dto.Table) string {
+	tn := table.TableName
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+
+	code := fmt.Sprintf("\tpublic function update(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
+
+	isFirst := true
+	for _, col := range table.Columns {
+		if col.IsUpdAble {
+			if isFirst {
+				code += fmt.Sprintf("\t\t\t\t%s = :%s\n", col.ColumnName, SnakeToCamel(col.ColumnName))
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\t\t\t\t,%s = :%s\n", col.ColumnName, SnakeToCamel(col.ColumnName))
+			}
+		}
+	}
+	code += "\t\t\tWHERE "
+
+	isFirst = true
+	for _, col := range table.Columns {
+		if col.IsPrimaryKey {
+			if isFirst {
+				code += fmt.Sprintf("%s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+				isFirst = false
+			} else {
+				code += fmt.Sprintf("\n\t\t\t  AND %s = :%s", col.ColumnName, SnakeToCamel(col.ColumnName))
+			}
+		}
+	}
+	code += "\";\n\n"
+	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
+
+	for _, col := range table.Columns {
+		if col.IsUpdAble || col.IsPrimaryKey {
+			code += fmt.Sprintf(
+				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
+				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
+			))
+		}
+	}
+	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+
+	code += fmt.Sprintf("\t\treturn $this->findOne($%s);\n\t}", tnc)
 
 	return code
 }
@@ -1142,7 +1246,6 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table)
 			}
 		}
 	}
-
 	code += "\";\n\n"
 	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n"
 
