@@ -381,8 +381,7 @@ func generateHtmlCodeHeader_ul(tables *[]dto.Table) string {
 }
 
 const HTML_HEADER_FORMAT = 
-`
-<!DOCTYPE html>
+`<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">

@@ -321,8 +321,7 @@ func (serv *sourceGeneratorPhp) generateControllersFiles(path string) error {
 }
 
 const PHP_CONTROLLER_FORMAT =
-`
-<?php
+`<?php
 
 declare(strict_types=1);
 
@@ -464,8 +463,7 @@ func (serv *sourceGeneratorPhp) generateServicesFiles(path string) error {
 }
 
 const PHP_SERVICE_FORMAT = 
-`
-<?php
+`<?php
 
 declare(strict_types=1);
 
@@ -767,8 +765,7 @@ func (serv *sourceGeneratorPhp) generateDaosFiles(path string) error {
 }
 
 const PHP_DAO_FORMAT =
-`
-<?php
+`<?php
 
 declare(strict_types=1);
 
@@ -827,8 +824,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFiles(path string) error {
 }
 
 const PHP_DAOIMPL_FORMAT = 
-`
-<?php
+`<?php
 
 declare(strict_types=1);
 
@@ -901,7 +897,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindAll(table *dto.Table
 	tnp := SnakeToPascal(tn)
 
 	code := "\tpublic function findAll(): array\n\t{\n"
-	code += "\t\t\t$query = \n\t\t\t\"SELECT\n"
+	code += "\t\t$query = \n\t\t\t\"SELECT\n"
 
 	for i, col := range table.Columns {
 		if i == 0 {
@@ -937,16 +933,16 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 	tnp := SnakeToPascal(tn)
 
 	code := fmt.Sprintf("\tpublic function findOne(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
-	code += "\t\t\t$query = \n\t\t\t\"SELECT\n"
+	code += "\t\t$query = \n\t\t\t\"SELECT"
 
 	for i, col := range table.Columns {
 		if i == 0 {
-			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t%s", col.ColumnName)
 		} else {
-			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t,%s", col.ColumnName)
 		}
 	}
-	code += fmt.Sprintf("\t\t\tFROM %s\n\t\t\tWHERE ", tn)
+	code += fmt.Sprintf("\n\t\t\tFROM %s\n\t\t\tWHERE ", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -978,7 +974,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
 
 	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t$ret->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+		code += fmt.Sprintf("\t\t$ret->set%s($result['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
 	}
 	code += "\n\t\treturn $ret;\n\t}"
 
@@ -992,7 +988,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 	tnp := SnakeToPascal(tn)
 
 	code := fmt.Sprintf("\tpublic function create(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
-	code += fmt.Sprintf("\t\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -1019,13 +1015,13 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 		}
 	}
 
-	code += "\t\t\t) RETURNING\n"
+	code += "\t\t\t) RETURNING"
 
 	for i, col := range table.Columns {
 		if i == 0 {
-			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t%s", col.ColumnName)
 		} else {
-			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t,%s", col.ColumnName)
 		}
 	}
 
@@ -1048,7 +1044,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
 
 	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t$ret->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+		code += fmt.Sprintf("\t\t$ret->set%s($result['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
 	}
 	code += "\n\t\treturn $ret;\n\t}"
 
@@ -1062,7 +1058,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 	tnp := SnakeToPascal(tn)
 
 	code := fmt.Sprintf("\tpublic function update(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
-	code += fmt.Sprintf("\t\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -1076,7 +1072,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 		}
 	}
 	
-	code += fmt.Sprintf("\t\t\tFROM %s\n\t\t\tWHERE ", tn)
+	code += "\t\t\tWHERE "
 
 	isFirst = true
 	for _, col := range table.Columns {
@@ -1090,13 +1086,13 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 		}
 	}
 
-	code += "\t\t\t) RETURNING\n"
+	code += "\n\t\t\t) RETURNING"
 
 	for i, col := range table.Columns {
 		if i == 0 {
-			code += fmt.Sprintf("\t\t\t\t%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t%s", col.ColumnName)
 		} else {
-			code += fmt.Sprintf("\t\t\t\t,%s\n", col.ColumnName)
+			code += fmt.Sprintf("\n\t\t\t\t,%s", col.ColumnName)
 		}
 	}
 
@@ -1119,7 +1115,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
 
 	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t$ret->set%s($row['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+		code += fmt.Sprintf("\t\t$ret->set%s($result['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
 	}
 	code += "\n\t\treturn $ret;\n\t}"
 
@@ -1162,7 +1158,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table)
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
 		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
 
-	code += "\n\t\treturn;\n\t}"
+	code += "\t\treturn;\n\t}"
 
 	return code
 }
