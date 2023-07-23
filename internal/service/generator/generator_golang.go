@@ -242,8 +242,8 @@ func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 
 // service interfaceプログラム生成
 func (serv *sourceGeneratorGolang) generateCodeServiceInterface(table *dto.Table) string {
-	tnc := SnakeToCamel(table.TableName)
 	tnp := SnakeToPascal(table.TableName)
+	tni := GetSnakeInitial(table.TableName)
 	return fmt.Sprintf("type %sService interface {\n", tnp) +
 		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
 		fmt.Sprintf("\tCreate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
@@ -431,7 +431,7 @@ func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 }
 
 // dao interfaceプログラム生成
-func (serv *sourceGeneratorGolang) generateCodeDaoInterface(table *dto.Table) error {
+func (serv *sourceGeneratorGolang) generateCodeDaoInterface(table *dto.Table) string {
 	tnp := SnakeToPascal(table.TableName)
 	tni := GetSnakeInitial(table.TableName)
 
