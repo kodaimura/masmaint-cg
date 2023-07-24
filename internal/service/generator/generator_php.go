@@ -699,7 +699,7 @@ func (serv *sourceGeneratorPhp) generateEntitiesFileCodeSetter(col *dto.Column) 
 
 	switch colType {
 	case "string", "?string":
-		code += fmt.Sprintf("\t\t$this->%s = $%s;\n", cnp, cnc)
+		code += fmt.Sprintf("\t\t$this->%s = $%s;\n", cnc, cnc)
 
 	case "int":
 		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
@@ -922,7 +922,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path stri
 		serv.generateDaoImplsFileCodeDelete(table),
 	)
 
-	err := WriteFile(fmt.Sprintf("%s%s.DaoImpl.php", path, tnp), code)
+	err := WriteFile(fmt.Sprintf("%s%sDaoImpl.php", path, tnp), code)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -981,7 +981,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function findOne(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code := fmt.Sprintf("\tpublic function findOne(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
 	code += "\t\t$query = \n\t\t\t\"SELECT"
 
 	for i, col := range table.Columns {
@@ -1035,7 +1035,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function create(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code := fmt.Sprintf("\tpublic function create(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
 	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
 
 	isFirst := true
@@ -1102,7 +1102,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function update(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code := fmt.Sprintf("\tpublic function update(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
 	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET\n", tn)
 
 	isFirst := true
@@ -1163,7 +1163,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function delete(%s, $%s)\n\t{\n", tnp, tnc)
+	code := fmt.Sprintf("\tpublic function delete(%s $%s)\n\t{\n", tnp, tnc)
 	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"DELETE FROM %s\n\t\t\tWHERE ", tn)
 
 	isFirst := true
@@ -1215,7 +1215,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate_MySQL(table *dto.
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function create(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code := fmt.Sprintf("\tpublic function create(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
 	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"INSERT INTO %s (\n", tn)
 
 	isFirst := true
@@ -1274,7 +1274,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate_MySQL(table *dto.
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 
-	code := fmt.Sprintf("\tpublic function update(%s, $%s): %s\n\t{\n", tnp, tnc, tnp)
+	code := fmt.Sprintf("\tpublic function update(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
 	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
 
 	isFirst := true
