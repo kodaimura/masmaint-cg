@@ -83,7 +83,7 @@ masmaint
 ```
 DB_DRIVER=mysql      //環境に合わせて
 DB_HOST=localhost    //環境に合わせて
-DB_PORT=3307         //環境に合わせて
+DB_PORT=3306         //環境に合わせて
 DB_NAME=masmaint     //環境に合わせて （SQLite3の場合は masmaintフォルダからの相対パス or 絶対パス）
 DB_USER=root         //環境に合わせて
 DB_PASS=root         //環境に合わせて
