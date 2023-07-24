@@ -51,6 +51,7 @@ masmaint
          └── local.env
 ```
 ```
+LOG_LEVEL=DEBUG
 APP_HOST=localhost
 APP_PORT=3000        //環境に合わせて
 DB_NAME=masmaint     //環境に合わせて （SQLite3の場合は masmaintフォルダからの相対パス or 絶対パス）
@@ -67,7 +68,33 @@ ENV=local go run cmd/masmaint/main.go
 ブラウザでアクセス  
 http://localhost:3000/mastertables
 
+### PHP 7 ~ 8
+バージョンは細かく検証したわけではないため、動かない可能性もある。
+#### 依存モジュールインストール
+```bash
+composer install
+```
+#### 環境変数ファイル設定
+```css
+masmaint
+└── env
+     └── .env
+```
+```
+DB_DRIVER=mysql      //環境に合わせて
+DB_HOST=localhost    //環境に合わせて
+DB_PORT=3307         //環境に合わせて
+DB_NAME=masmaint     //環境に合わせて （SQLite3の場合は masmaintフォルダからの相対パス or 絶対パス）
+DB_USER=root         //環境に合わせて
+DB_PASS=root         //環境に合わせて
+```
 
+#### 起動
+```bash
+composer start
+```
+ブラウザでアクセス  
+http://localhost:8080/mastertables
 
 ## License
 Copyright © 2023 Murakami Koudai
