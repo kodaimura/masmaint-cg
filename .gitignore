@@ -5,3 +5,4 @@
 main
 tmp/*.csv
 output/*.zip
+/config/env/.env
