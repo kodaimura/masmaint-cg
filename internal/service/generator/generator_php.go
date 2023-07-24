@@ -25,7 +25,14 @@ func NewSourceGeneratorPhp(tables *[]dto.Table, rdbms, path string) *sourceGener
 
 // PHPソース生成
 func (serv *sourceGeneratorPhp) GenerateSource() error {
+	if err := os.MkdirAll(serv.path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
 
+	if err := serv.generateGitignore(); err != nil {
+		return err
+	}
 	if err := serv.generateEnv(); err != nil {
 		return err
 	}
@@ -57,12 +64,38 @@ func (serv *sourceGeneratorPhp) GenerateSource() error {
 	return nil	
 }
 
+// .gitignore生成
+func (serv *sourceGeneratorPhp) generateGitignore() error {
+	code := "*.log\n*.db\n*.sqlite3\n.DS_Store\nmain\n.env\nlocal.env\n/vendor/\n/logs/*"
+	err := WriteFile(fmt.Sprintf("%s.gitignore", serv.path), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
 // env生成
 func (serv *sourceGeneratorPhp) generateEnv() error {
 	source := "_originalcopy_/php/env"
 	destination := serv.path + "env/"
 
 	err := CopyDir(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
+
+	rdbmsCls := "postgresql"
+	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+		rdbmsCls = "mysql"
+	} else if serv.rdbms == constant.SQLITE_3350 {
+		rdbmsCls = "sqlite3"
+	}
+
+	source = fmt.Sprintf("_originalcopy_/php/env-sub/%s.env", rdbmsCls)
+	destination = serv.path + "env/.env"
+
+	err = CopyFile(source, destination)
 	if err != nil {
 		logger.LogError(err.Error())
 	}
@@ -153,8 +186,21 @@ func (serv *sourceGeneratorPhp) generateAppFiles(path string) error {
 
 // app/dependencies.php生成
 func (serv *sourceGeneratorPhp) generateAppFileDependencies(path string) error {
-	// _originalcopy_からコピー
-	return nil
+	rdbmsCls := "postgresql"
+	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+		rdbmsCls = "mysql"
+	} else if serv.rdbms == constant.SQLITE_3350 {
+		rdbmsCls = "sqlite3"
+	}
+
+	source := fmt.Sprintf("_originalcopy_/php/app-sub/dependencies.%s.php", rdbmsCls)
+	destination := serv.path + fmt.Sprintf("app/dependencies.php")
+
+	err := CopyFile(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
 }
 
 // app/middleware.php生成
@@ -603,7 +649,7 @@ func (serv *sourceGeneratorPhp) generateServicesFileCodeDelete(table *dto.Table)
 	tnc := SnakeToCamel(table.TableName)
 	tnp := SnakeToPascal(table.TableName)
 
-	code := fmt.Sprintf("\tpublic function delete($data): %s\n\t{\n", tnp)
+	code := "\tpublic function delete($data)\n\t{\n"
 	code += fmt.Sprintf("\t\t$%s = new %s();\n", tnc, tnp)
 
 	for _, col := range table.Columns {
@@ -614,7 +660,7 @@ func (serv *sourceGeneratorPhp) generateServicesFileCodeDelete(table *dto.Table)
  		}
 	}
 
-	code += fmt.Sprintf("\n\t\treturn $this->%sDao->delete($%s);\n\t}", tnc, tnc)
+	code += fmt.Sprintf("\n\t\t$this->%sDao->delete($%s);\n\treturn;\n\t}", tnc, tnc)
 	return code
 }
 
@@ -698,8 +744,18 @@ func (serv *sourceGeneratorPhp) generateEntitiesFileCodeSetter(col *dto.Column) 
 	code := fmt.Sprintf("\tpublic function set%s($%s)\n\t{\n", cnp, cnc)
 
 	switch colType {
-	case "string", "?string":
+	case "string":
 		code += fmt.Sprintf("\t\t$this->%s = $%s;\n", cnc, cnc)
+
+	case "?string":
+		if col.ColumnType == "t" {
+			code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
+			fmt.Sprintf("\t\t\t$this->%s = null;\n", cnc) +
+			fmt.Sprintf("\t\t} else {\n") + 
+			fmt.Sprintf("\t\t\t$this->%s = $%s;\n\t\t}\n", cnc, cnc)
+		} else {
+			code += fmt.Sprintf("\t\t$this->%s = $%s;\n", cnc, cnc)
+		}
 
 	case "int":
 		code += fmt.Sprintf("\t\tif ($%s === null || $%s === \"\") {\n", cnc, cnc) +
@@ -961,7 +1017,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindAll(table *dto.Table
 	)
 	code += "\t\ttry {\n\t\t\t$stmt = $this->db->prepare($query);\n" +
 		"\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	code += "\t\t$result = $stmt->fetchAll(PDO::FETCH_ASSOC);\n\t\t$ret = [];\n"
 	code += "\t\tforeach ($result as $row) {\n"
@@ -1011,12 +1067,12 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeFindOne(table *dto.Table
 		if col.IsPrimaryKey {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
 	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
@@ -1055,10 +1111,10 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 	for _, col := range table.Columns {
 		if col.IsInsAble {
 			if isFirst {
-				code += fmt.Sprintf("\t\t\t\t:%s\n", col.ColumnName)
+				code += fmt.Sprintf("\t\t\t\t:%s\n", SnakeToCamel(col.ColumnName))
 				isFirst = false
 			} else {
-				code += fmt.Sprintf("\t\t\t\t,:%s\n", col.ColumnName)
+				code += fmt.Sprintf("\t\t\t\t,:%s\n", SnakeToCamel(col.ColumnName))
 			}
 		}
 	}
@@ -1078,12 +1134,12 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate(table *dto.Table)
 		if col.IsInsAble {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
 	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
@@ -1145,14 +1201,21 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate(table *dto.Table)
 		if col.IsUpdAble || col.IsPrimaryKey {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
-	code += "\t\treturn $ret;\n\t}"
+	code += "\t\t$result = $stmt->fetch(PDO::FETCH_ASSOC);\n\n"
+	code += fmt.Sprintf("\t\t$ret = new %s();\n", tnp)
+
+	for _, col := range table.Columns {
+		code += fmt.Sprintf("\t\t$ret->set%s($result['%s']);\n", SnakeToPascal(col.ColumnName), col.ColumnName)
+	}
+
+	code += "\n\t\treturn $ret;\n\t}"
 
 	return code
 }
@@ -1184,13 +1247,13 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeDelete(table *dto.Table)
 		if col.IsPrimaryKey {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	code += "\t\treturn;\n\t}"
 
@@ -1235,10 +1298,10 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate_MySQL(table *dto.
 	for _, col := range table.Columns {
 		if col.IsInsAble {
 			if isFirst {
-				code += fmt.Sprintf("\t\t\t\t:%s\n", col.ColumnName)
+				code += fmt.Sprintf("\t\t\t\t:%s\n", SnakeToCamel(col.ColumnName))
 				isFirst = false
 			} else {
-				code += fmt.Sprintf("\t\t\t\t,:%s\n", col.ColumnName)
+				code += fmt.Sprintf("\t\t\t\t,:%s\n", SnakeToCamel(col.ColumnName))
 			}
 		}
 	}
@@ -1249,12 +1312,12 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeCreate_MySQL(table *dto.
 		if col.IsInsAble {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	aicol, hasAICol := serv.getAutoIncrementColumn(table)
 	if hasAICol {
@@ -1275,7 +1338,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate_MySQL(table *dto.
 	tnp := SnakeToPascal(tn)
 
 	code := fmt.Sprintf("\tpublic function update(%s $%s): %s\n\t{\n", tnp, tnc, tnp)
-	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET(\n", tn)
+	code += fmt.Sprintf("\t\t$query = \n\t\t\t\"UPDATE %s SET\n", tn)
 
 	isFirst := true
 	for _, col := range table.Columns {
@@ -1308,12 +1371,12 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFileCodeUpdate_MySQL(table *dto.
 		if col.IsUpdAble || col.IsPrimaryKey {
 			code += fmt.Sprintf(
 				"\t\t\t$stmt->bindValue(':%s', $%s->get%s());\n", 
-				col.ColumnName, tnc, SnakeToPascal(col.ColumnName,
-			))
+				SnakeToCamel(col.ColumnName), tnc, SnakeToPascal(col.ColumnName),
+			)
 		}
 	}
 	code += "\t\t\t$stmt->execute();\n\t\t} catch (PDOException $e) {\n" +
-		"\t\t\t$this->logger->error($e->getMessage());\n\t\t}\n\n"
+		"\t\t\t$this->logger->error($e->getMessage());\n\t\t\tthrow $e;\n\t\t}\n\n"
 
 	code += fmt.Sprintf("\t\treturn $this->findOne($%s);\n\t}", tnc)
 

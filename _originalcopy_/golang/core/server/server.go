@@ -22,8 +22,7 @@ func router() *gin.Engine {
 	r.LoadHTMLGlob("web/template/*.html")
 
 	//STATIC
-	r.Static("/css", "web/static/css")
-	r.Static("/js", "web/static/js")
+	r.Static("/static", "web/static")
 
 	controller.SetRouter(r)
 

@@ -25,7 +25,14 @@ func NewSourceGeneratorGolang(tables *[]dto.Table, rdbms, path string) *sourceGe
 
 // Goソース生成
 func (serv *sourceGeneratorGolang) GenerateSource() error {
+	if err := os.MkdirAll(serv.path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
 
+	if err := serv.generateGitignore(); err != nil {
+		return err
+	}
 	if err := serv.generateCmd(); err != nil {
 		return err
 	}
@@ -57,6 +64,16 @@ func (serv *sourceGeneratorGolang) GenerateSource() error {
 	return nil	
 }
 
+// .gitignore生成
+func (serv *sourceGeneratorGolang) generateGitignore() error {
+	code := "*.log\n*.db\n*.sqlite3\n.DS_Store\nmain\n.env\nlocal.env"
+	err := WriteFile(fmt.Sprintf("%s.gitignore", serv.path), code)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+	return err
+}
+
 // cmd生成
 func (serv *sourceGeneratorGolang) generateCmd() error {
 	source := "_originalcopy_/golang/cmd"
@@ -71,6 +88,12 @@ func (serv *sourceGeneratorGolang) generateCmd() error {
 
 // config生成
 func (serv *sourceGeneratorGolang) generateConfig() error {
+	path := serv.path + "config/"
+
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.LogError(err.Error())
+		return err
+	}
 	source := "_originalcopy_/golang/config"
 	destination := serv.path + "config/"
 
@@ -78,6 +101,28 @@ func (serv *sourceGeneratorGolang) generateConfig() error {
 	if err != nil {
 		logger.LogError(err.Error())
 	}
+	return serv.generateEnv()
+}
+
+// env生成
+func (serv *sourceGeneratorGolang) generateEnv() error {
+	path := serv.path + "config/env/"
+
+	rdbmsCls := "postgresql"
+	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+		rdbmsCls = "mysql"
+	} else if serv.rdbms == constant.SQLITE_3350 {
+		rdbmsCls = "sqlite3"
+	}
+
+	source := fmt.Sprintf("_originalcopy_/golang/config-sub/env/local.%s.env", rdbmsCls)
+	destination := fmt.Sprintf("%slocal.env", path)
+
+	err := CopyFile(source, destination)
+	if err != nil {
+		logger.LogError(err.Error())
+	}
+
 	return err
 }
 
@@ -96,7 +141,7 @@ func (serv *sourceGeneratorGolang) generateCore() error {
 
 // db生成
 func (serv *sourceGeneratorGolang) generateDb() error {
-	path := serv.path + "core/db"
+	path := serv.path + "core/db/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.LogError(err.Error())
@@ -111,7 +156,7 @@ func (serv *sourceGeneratorGolang) generateDb() error {
 	}
 
 	source := fmt.Sprintf("_originalcopy_/golang/core-sub/db/%s.go", rdbmsCls)
-	destination := serv.path + fmt.Sprintf("core/db/db.go")
+	destination := fmt.Sprintf("%sdb.go", path)
 
 	err := CopyFile(source, destination)
 	if err != nil {
