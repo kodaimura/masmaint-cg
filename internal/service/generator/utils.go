@@ -129,7 +129,7 @@ func GetSnakeInitial(snake string) string {
 	ls := strings.Split(strings.ToLower(snake), "_")
 	ret := ""
 	for _, s := range ls {
-		ret = s[0:1]
+		ret += s[0:1]
 	}
 	return ret
 }
