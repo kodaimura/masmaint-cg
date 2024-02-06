@@ -109,7 +109,7 @@ func (serv *sourceGeneratorGolang) generateEnv() error {
 	path := serv.path + "config/env/"
 
 	rdbmsCls := "postgresql"
-	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+	if serv.rdbms == constant.MYSQL {
 		rdbmsCls = "mysql"
 	} else if serv.rdbms == constant.SQLITE_3350 {
 		rdbmsCls = "sqlite3"
@@ -149,7 +149,7 @@ func (serv *sourceGeneratorGolang) generateDb() error {
 	}
 
 	rdbmsCls := "postgresql"
-	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+	if serv.rdbms == constant.MYSQL {
 		rdbmsCls = "mysql"
 	} else if serv.rdbms == constant.SQLITE_3350 {
 		rdbmsCls = "sqlite3"
@@ -1134,8 +1134,7 @@ func (serv *sourceGeneratorGolang) getAutoIncrementColumn(table *dto.Table) (dto
 	return dto.Column{}, false
 }
 
-// daoのInsertメソッド生成(MYSQLの8.0.21以前用)
-// RETURNINGを使わない
+// daoのInsertメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert_MySQL(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)
@@ -1181,8 +1180,7 @@ func (serv *sourceGeneratorGolang) generateDaoFileCodeInsert_MySQL(table *dto.Ta
 	return code
 }
 
-// daoのUpdateメソッド生成(MYSQLの8.0.21以前用)
-// RETURNINGを使わない
+// daoのUpdateメソッド生成
 func (serv *sourceGeneratorGolang) generateDaoFileCodeUpdate_MySQL(table *dto.Table) string {
 	tn := table.TableName
 	tnc := SnakeToCamel(tn)

@@ -86,7 +86,7 @@ func (serv *sourceGeneratorPhp) generateEnv() error {
 	}
 
 	rdbmsCls := "postgresql"
-	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+	if serv.rdbms == constant.MYSQL {
 		rdbmsCls = "mysql"
 	} else if serv.rdbms == constant.SQLITE_3350 {
 		rdbmsCls = "sqlite3"
@@ -187,7 +187,7 @@ func (serv *sourceGeneratorPhp) generateAppFiles(path string) error {
 // app/dependencies.php生成
 func (serv *sourceGeneratorPhp) generateAppFileDependencies(path string) error {
 	rdbmsCls := "postgresql"
-	if serv.rdbms == constant.MYSQL || serv.rdbms == constant.MYSQL_8021 {
+	if serv.rdbms == constant.MYSQL {
 		rdbmsCls = "mysql"
 	} else if serv.rdbms == constant.SQLITE_3350 {
 		rdbmsCls = "sqlite3"

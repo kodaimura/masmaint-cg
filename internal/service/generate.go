@@ -53,7 +53,6 @@ func (serv *generateService) generateSource(tables *[]dto.Table, lang, rdbms, pa
 
 	if !(rdbms == constant.POSTGRESQL ||
 		rdbms == constant.MYSQL ||
-		rdbms == constant.MYSQL_8021 ||
 		rdbms == constant.SQLITE_3350) {
 		return errors.New("未対応RDBMS");
 	}
