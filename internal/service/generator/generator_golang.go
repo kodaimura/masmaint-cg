@@ -26,7 +26,7 @@ func NewSourceGeneratorGolang(tables *[]dto.Table, rdbms, path string) *sourceGe
 // Goソース生成
 func (serv *sourceGeneratorGolang) GenerateSource() error {
 	if err := os.MkdirAll(serv.path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (serv *sourceGeneratorGolang) generateGitignore() error {
 	code := "*.log\n*.db\n*.sqlite3\n.DS_Store\nmain\n.env\nlocal.env"
 	err := WriteFile(fmt.Sprintf("%s.gitignore", serv.path), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -81,7 +81,7 @@ func (serv *sourceGeneratorGolang) generateCmd() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -91,7 +91,7 @@ func (serv *sourceGeneratorGolang) generateConfig() error {
 	path := serv.path + "config/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 	source := "_originalcopy_/golang/config"
@@ -99,7 +99,7 @@ func (serv *sourceGeneratorGolang) generateConfig() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return serv.generateEnv()
 }
@@ -120,7 +120,7 @@ func (serv *sourceGeneratorGolang) generateEnv() error {
 
 	err := CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 
 	return err
@@ -133,7 +133,7 @@ func (serv *sourceGeneratorGolang) generateCore() error {
 	
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 	return serv.generateDb()
@@ -144,7 +144,7 @@ func (serv *sourceGeneratorGolang) generateDb() error {
 	path := serv.path + "core/db/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -160,7 +160,7 @@ func (serv *sourceGeneratorGolang) generateDb() error {
 
 	err := CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -172,7 +172,7 @@ func (serv *sourceGeneratorGolang) generateLog() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -182,7 +182,7 @@ func (serv *sourceGeneratorGolang) generateController() error {
 	path := serv.path + "controller/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -246,7 +246,7 @@ func (serv *sourceGeneratorGolang) generateControllerFileRouter(path string) err
 
 	err := WriteFile(path + "router.go", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -280,7 +280,7 @@ func (serv *sourceGeneratorGolang) generateControllerFile(table *dto.Table, path
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -380,7 +380,7 @@ func (serv *sourceGeneratorGolang) generateDto() error {
 	path := serv.path + "dto/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -413,7 +413,7 @@ func (serv *sourceGeneratorGolang) generateDtoFile(table *dto.Table, path string
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -423,7 +423,7 @@ func (serv *sourceGeneratorGolang) generateService() error {
 	path := serv.path + "service/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -470,7 +470,7 @@ func (serv *sourceGeneratorGolang) generateServiceFile(table *dto.Table, path st
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -497,7 +497,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetAll(table *dto.Tabl
 
 	return fmt.Sprintf("func (serv *%sService) GetAll() ([]dto.%sDto, error) {\n", tnc, tnp) +
 		fmt.Sprintf("\trows, err := serv.%sDao.SelectAll()\n", tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
 		fmt.Sprintf("\t\treturn []dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
 		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
@@ -530,7 +530,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeGetOne(table *dto.Tabl
 	code += "{\n"
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Select(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
@@ -565,7 +565,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeCreate(table *dto.Tabl
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Insert(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
@@ -599,7 +599,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeUpdate(table *dto.Tabl
 	code += "{\n"
 	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
 	code += fmt.Sprintf("\trow, err := serv.%sDao.Update(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
 		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
 		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
 		"}\n"
@@ -633,7 +633,7 @@ func (serv *sourceGeneratorGolang) generateServiceFileCodeDelete(table *dto.Tabl
 	code += "{\n"
 	code += "\t\treturn cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n"
 	code += fmt.Sprintf("\terr := serv.%sDao.Delete(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.LogError(err.Error())\n" +
+		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
 		"\t\treturn cerror.NewDaoError(\"削除に失敗しました。\")\n\t}\n\n" +
 		"\treturn nil\n}\n"
 
@@ -657,7 +657,7 @@ func (serv *sourceGeneratorGolang) generateEntity() error {
 	path := serv.path + "model/entity/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -720,7 +720,7 @@ func (serv *sourceGeneratorGolang) generateEntityFile(table *dto.Table, path str
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -822,7 +822,7 @@ func (serv *sourceGeneratorGolang) generateDao() error {
 	path := serv.path + "model/dao/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -865,7 +865,7 @@ func (serv *sourceGeneratorGolang) generateDaoFile(table *dto.Table, path string
 
 	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1241,7 +1241,7 @@ func (serv *sourceGeneratorGolang) generateWeb() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1279,7 +1279,7 @@ func (serv *sourceGeneratorGolang) generateJs() error {
 	path := serv.path + "web/static/js/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1291,7 +1291,7 @@ func (serv *sourceGeneratorGolang) generateJsFiles(path string) error {
 	for _, table := range *serv.tables {
 		code := GenerateJsCode(&table)
 		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
-			logger.LogError(err.Error())
+			logger.Error(err.Error())
 			return err
 		}
 	}
@@ -1303,7 +1303,7 @@ func (serv *sourceGeneratorGolang) generateTemplate() error {
 	path := serv.path + "web/template/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1337,7 +1337,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileHeader(path string) error
 
 	err := WriteFile(path + "_header.html", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1349,7 +1349,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileFooter(path string) error
 
 	err := WriteFile(path + "_footer.html", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1361,7 +1361,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFileIndex(path string) error 
 
 	err := WriteFile(path + "index.html", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1373,7 +1373,7 @@ func (serv *sourceGeneratorGolang) generateTemplateFile(table *dto.Table, path s
 
 	err := WriteFile(fmt.Sprintf("%s%s.html", path, table.TableName), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }

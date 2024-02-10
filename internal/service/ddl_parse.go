@@ -32,7 +32,7 @@ func (serv *ddlParseService) readFile(path string) (string, error) {
 	file, err := os.Open(path)
 
 	if err != nil {
-		logger.LogError("failed to open file:" + path)
+		logger.Error("failed to open file:" + path)
 		return "", err
 	}
 	defer file.Close()
@@ -45,7 +45,7 @@ func (serv *ddlParseService) readFile(path string) (string, error) {
 			if err == io.EOF {
 				break
 			}
-			logger.LogError("failed to read file:" + path)
+			logger.Error("failed to read file:" + path)
 			return "", err
 		}
 		ret += string(data[:n])

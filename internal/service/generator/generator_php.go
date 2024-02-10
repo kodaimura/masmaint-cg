@@ -26,7 +26,7 @@ func NewSourceGeneratorPhp(tables *[]dto.Table, rdbms, path string) *sourceGener
 // PHPソース生成
 func (serv *sourceGeneratorPhp) GenerateSource() error {
 	if err := os.MkdirAll(serv.path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -69,7 +69,7 @@ func (serv *sourceGeneratorPhp) generateGitignore() error {
 	code := "*.log\n*.db\n*.sqlite3\n.DS_Store\nmain\n.env\nlocal.env\n/vendor/\n/logs/*"
 	err := WriteFile(fmt.Sprintf("%s.gitignore", serv.path), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -81,7 +81,7 @@ func (serv *sourceGeneratorPhp) generateEnv() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -97,7 +97,7 @@ func (serv *sourceGeneratorPhp) generateEnv() error {
 
 	err = CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -109,7 +109,7 @@ func (serv *sourceGeneratorPhp) generateLogs() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -121,7 +121,7 @@ func (serv *sourceGeneratorPhp) generateVar() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -133,7 +133,7 @@ func (serv *sourceGeneratorPhp) generateHtaccess() error {
 
 	err := CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -145,7 +145,7 @@ func (serv *sourceGeneratorPhp) generateComposerJson() error {
 
 	err := CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -157,7 +157,7 @@ func (serv *sourceGeneratorPhp) generateApp() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -198,7 +198,7 @@ func (serv *sourceGeneratorPhp) generateAppFileDependencies(path string) error {
 
 	err := CopyFile(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -243,7 +243,7 @@ func (serv *sourceGeneratorPhp) generateAppFileRepositories(path string) error {
 
 	err := WriteFile(fmt.Sprintf("%srepositories.php", path), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -285,7 +285,7 @@ func (serv *sourceGeneratorPhp) generateAppFileRoutes(path string) error {
 
 	err := WriteFile(fmt.Sprintf("%sroutes.php", path), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -297,7 +297,7 @@ func (serv *sourceGeneratorPhp) generateSrc() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -514,7 +514,7 @@ func (serv *sourceGeneratorPhp) generateControllersFile(table *dto.Table, path s
 
 	err := WriteFile(fmt.Sprintf("%s%sController.php", path, tnp), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -600,7 +600,7 @@ func (serv *sourceGeneratorPhp) generateServicesFile(table *dto.Table, path stri
 
 	err := WriteFile(fmt.Sprintf("%s%sService.php", path, tnp), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -669,7 +669,7 @@ func (serv *sourceGeneratorPhp) generateModels() error {
 	path := serv.path + "src/Application/Models/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -691,7 +691,7 @@ func (serv *sourceGeneratorPhp) generateEntities() error {
 	path := serv.path + "src/Application/Models/Entities/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -830,7 +830,7 @@ func (serv *sourceGeneratorPhp) generateEntitiesFile(table *dto.Table, path stri
 	code += "\t\t];\n\t}\n}"
 	err := WriteFile(fmt.Sprintf("%s%s.php", path, SnakeToPascal(table.TableName)), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -840,7 +840,7 @@ func (serv *sourceGeneratorPhp) generateDaos() error {
 	path := serv.path + "src/Application/Models/Daos/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -889,7 +889,7 @@ func (serv *sourceGeneratorPhp) generateDaosFile(table *dto.Table, path string) 
 	)
 	err := WriteFile(fmt.Sprintf("%s%sDao.php", path, SnakeToPascal(table.TableName)), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -899,7 +899,7 @@ func (serv *sourceGeneratorPhp) generateDaoImpls() error {
 	path := serv.path + "src/Application/Models/DaoImpls/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -980,7 +980,7 @@ func (serv *sourceGeneratorPhp) generateDaoImplsFile(table *dto.Table, path stri
 
 	err := WriteFile(fmt.Sprintf("%s%sDaoImpl.php", path, tnp), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1390,7 +1390,7 @@ func (serv *sourceGeneratorPhp) generatePublic() error {
 
 	err := CopyDir(source, destination)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1439,7 +1439,7 @@ func (serv *sourceGeneratorPhp) generateJs() error {
 	path := serv.path + "public/static/js/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1451,7 +1451,7 @@ func (serv *sourceGeneratorPhp) generateJsFiles(path string) error {
 	for _, table := range *serv.tables {
 		code := GenerateJsCode(&table)
 		if err := WriteFile(fmt.Sprintf("%s%s.js", path, table.TableName), code); err != nil {
-			logger.LogError(err.Error())
+			logger.Error(err.Error())
 			return err
 		}
 	}
@@ -1463,7 +1463,7 @@ func (serv *sourceGeneratorPhp) generateTemplates() error {
 	path := serv.path + "templates/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 
@@ -1497,7 +1497,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFileBase(path string) error {
 
 	err := WriteFile(path + "base.html", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1511,7 +1511,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFileIndex(path string) error {
 
 	err := WriteFile(path + "index.html", code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }
@@ -1525,7 +1525,7 @@ func (serv *sourceGeneratorPhp) generateTemplatesFile(table *dto.Table, path str
 
 	err := WriteFile(fmt.Sprintf("%s%s.html", path, table.TableName), code)
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 	}
 	return err
 }

@@ -15,11 +15,11 @@ func WriteFile(path, content string) error {
 	defer f.Close()
 
 	if err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 	if _, err = f.WriteString(content); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return err
 	}
 	return nil
@@ -83,13 +83,13 @@ func CopyDir(source string, destination string) error {
 func ReadFile(path string) string {
 	file, err := os.Open(path)
 	if err != nil {
-		logger.LogFatal(err.Error())
+		logger.Fatal(err.Error())
 	}
 	defer file.Close()
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		logger.LogFatal(err.Error())
+		logger.Fatal(err.Error())
 	}
 	fileSize := fileInfo.Size()
 
@@ -97,7 +97,7 @@ func ReadFile(path string) string {
 
 	_, err = file.Read(content)
 	if err != nil {
-		logger.LogFatal(err.Error())
+		logger.Fatal(err.Error())
 	}
 
 	return string(content)

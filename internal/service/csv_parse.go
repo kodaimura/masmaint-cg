@@ -40,7 +40,7 @@ func (serv *csvParseService) readFile(path string) ([][]string, []string) {
 	file, err := os.Open(path)
 
 	if err != nil {
-		logger.LogError("failed to open file:" + path + " " + err.Error())
+		logger.Error("failed to open file:" + path + " " + err.Error())
 		return nil, []string {"ファイルの読み込みに失敗しました。"}
 	}
 	defer file.Close()
@@ -51,7 +51,7 @@ func (serv *csvParseService) readFile(path string) ([][]string, []string) {
 	records, err := reader.ReadAll()
 
 	if err != nil {
-		logger.LogError("failed to read file:" + path + " " + err.Error())
+		logger.Error("failed to read file:" + path + " " + err.Error())
 		return nil, []string {"ファイルの読み込みに失敗しました。"}
 	}
 

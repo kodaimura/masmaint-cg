@@ -28,13 +28,13 @@ func (serv *generateService) Generate(tables *[]dto.Table, lang, rdbms string) (
 	path := serv.generateSourcePath()
 
 	if err := serv.generateSource(tables, lang, rdbms, path); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return "", err
 	}
 
 	pathZip := path + ".zip"
 	if err := exec.Command("zip", "-rm", pathZip, path).Run(); err != nil {
-		logger.LogError(err.Error())
+		logger.Error(err.Error())
 		return "", err
 	}
 

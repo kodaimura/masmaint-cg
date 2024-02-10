@@ -4,13 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"masmaint-cg/config"
-	"masmaint-cg/internal/core/logger"
 	"masmaint-cg/internal/controller"
 )
 
 func Run() {
 	cf := config.GetConfig()
-	logger.SetAccessLogger()
 	r := router()
 	r.Run(":" + cf.AppPort)
 }
