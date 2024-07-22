@@ -108,7 +108,7 @@ func SetAccessLogger() {
 }
 
 
-func LogDebug(msg string) {
+func Debug(msg string) {
 	if logLevel > LOG_LEVEL_DEBUG {
 		return
 	}
@@ -118,7 +118,7 @@ func LogDebug(msg string) {
 }
 
 
-func LogInfo(msg string) {
+func Info(msg string) {
 	if logLevel > LOG_LEVEL_INFO {
 		return
 	}
@@ -128,7 +128,7 @@ func LogInfo(msg string) {
 }
 
 
-func LogWarning(msg string) {
+func Warning(msg string) {
 	if logLevel > LOG_LEVEL_WARNING {
 		return
 	}
@@ -138,7 +138,7 @@ func LogWarning(msg string) {
 }
 
 
-func LogError(msg string) {
+func Error(msg string) {
 	if logLevel > LOG_LEVEL_ERROR {
 		return
 	}
@@ -150,7 +150,7 @@ func LogError(msg string) {
 }
 
 
-func LogFatal(msg string) {
+func Fatal(msg string) {
 	if logLevel > LOG_LEVEL_FATAL {
 		return
 	}
