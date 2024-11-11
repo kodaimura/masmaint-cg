@@ -32,19 +32,18 @@ func NewRootController() *rootController {
 
 //GET /
 func (ctr *rootController) indexPage(c *gin.Context) {
-
 	c.HTML(200, "index.html", gin.H{})
 }
 
-//POST /csv
-func (ctr *rootController) postCsv(c *gin.Context) {
-	file, _ := c.FormFile("file")
+//POST /generate
+func (ctr *rootController) postGenerate(c *gin.Context) {
+	ddl, _ := c.FormFile("ddl")
 	lang := c.PostForm("lang")
 	rdbms := c.PostForm("rdbms")
 
 	randStr := utils.RandomString(10)
 	path := "tmp/upload-" + time.Now().Format("2006-01-02-15-04-05") + "-" + randStr + ".csv"
-	c.SaveUploadedFile(file, path)
+	c.SaveUploadedFile(ddl, path)
 	
 	tables, errors := ctr.cpServ.Parse(path)
 

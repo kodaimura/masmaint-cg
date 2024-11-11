@@ -1,33 +1,17 @@
 {{template "header" .}}
 <a href="https://masmaint-sample.carkodr.com/mastertables" style="text-decoration: none;" target="_blank">マスメン画面サンプル</a>
+<a href="https://github.com/kodaimura/masmaint-sample/tree/main/sample" target="_blank">DDLサンプル</a>
 <hr>
-<div>手順</div>
-<ol>
-	<li>テーブル定義に沿ってCSVを用意
-		（<a href="sample/csv_sample.csv" style="text-decoration: none;"　download>CSVサンプル</a>&nbsp;&nbsp; 
-		<a href="https://github.com/kodaimura/masmaint-sample/tree/main/sample" target="_blank">DDLサンプル</a>）
-	</li>
-	<li>言語・RDBMS・CSVを選択し、自動生成</li>
-	<li>
-		生成されたプログラムに対し
-		<a href="https://github.com/kodaimura/masmaint-cg/tree/main/docs" target="_blank">プログラム起動設定</a>を行う
-	</li>
-	<li>localhost:設定ポート/mastertables にアクセス</li>
-</ol>
 <div class="row">
 	<div class="col-4">
 		<label>言語</label>
 		<select class="form-select" id="lang">
-			<option value="golang" selected>Go 1.18~ (Gin)</option>
-			<option value="php">PHP 7~8</option>
+			<option value="golang" selected>Go 1.22 (Gin)</option>
 		</select>
 	</div>
 	
 	<div class="col-4">
 		<label>RDBMS</label>
-		<span class="help" data-bs-toggle="tooltip" data-bs-placement="top" 
-			title="MySQLバージョンが8.0.21以降の場合は「MySQL 8.0.21~」推奨。「MySQL」でも基本的に問題ないが、PK/登録時入力不可/整数型のカラムをAUTO_INCREMENTのカラムと判断してプログラムを生成するため、PK/登録時入力不可/整数型でAUTO_INCREMENTでないカラムが含まれるテーブルで不都合が起きる可能性がある。
-			"></span>
 		<select class="form-select" id="rdbms">
 			<option value="postgresql" selected>PostgreSQL</option>
 			<option value="mysql">MySQL</option>
@@ -38,24 +22,15 @@
 <div class="row align-items-center mt-3">
 	<div class="col-8">
 		<div class="input-group mb-1">
-			<input type="file" class="form-control" id="csv" accept=".csv">
+			<input type="file" class="form-control" id="ddl" accept=".sql">
 		</div>
 	</div>
 	<div class="col-auto align-self-start">
-		<button type="button" class="btn btn-primary" id="generate">自動生成</button>
+		<button type="button" class="btn btn-primary" id="generate">生成</button>
 	</div>
 </div>
 &nbsp;&nbsp;&nbsp;
 
 <div id="message" class="overflow-auto" style="max-height: 50vh;"></div>
 <script type="text/javascript" src="/js/index.js"></script>
-<!-- Tooltip 設定 -->
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
-	<script>
-		var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-			return new bootstrap.Tooltip(tooltipTriggerEl)
-		})
-	</script>
-<!-- Tooltip 設定 -->
 {{template "footer" .}}

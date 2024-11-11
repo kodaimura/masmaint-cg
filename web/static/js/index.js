@@ -1,21 +1,21 @@
 document.getElementById('generate').addEventListener('click', () => {
 	document.getElementById('message').innerHTML = '';
 
-	const file = document.getElementById('csv').files[0];
+	const ddl = document.getElementById('ddl').files[0];
 	const lang = document.getElementById('lang').value;
 	const rdbms = document.getElementById('rdbms').value;
 
-	if (file === undefined) {
-		renderMessage("csvファイルが選択されていません。", false);
+	if (ddl === undefined) {
+		renderMessage("DDLファイルが選択されていません。", false);
 		return;
 	}
 
 	const formData = new FormData();
-	formData.append('file', file);
+	formData.append('file', ddl);
 	formData.append('lang', lang);
 	formData.append('rdbms', rdbms);
 
-	fetch('/csv', {
+	fetch('/generate', {
 		method: 'POST',
 		body: formData
 	})
@@ -37,7 +37,7 @@ const download = (path) => {
 	alink.download = path.substring(2);
 	alink.href = path;
 	alink.click();
-	document.getElementById('csv').value = ''
+	document.getElementById('ddl').value = ''
 	renderMessage(`${path.substring(2).replace('/', '_')} がダウンロードされました。`, true);
 }
 
