@@ -7,8 +7,6 @@ import (
 	"github.com/kodaimura/ddlparse"
 
 	"masmaint-cg/internal/core/logger"
-	"masmaint-cg/internal/shared/dto"
-	"masmaint-cg/internal/shared/constant"
 )
 
 
@@ -35,31 +33,10 @@ func (gen *generator) Generate() error {
 		return err
 	}
 
-	if err := gen.generateGitignore(); err != nil {
+	if err := gen.copyTemplate(); err != nil {
 		return err
 	}
-	if err := gen.generateCmd(); err != nil {
-		return err
-	}
-	if err := gen.generateConfig(); err != nil {
-		return err
-	}
-	if err := gen.generateCore(); err != nil {
-		return err
-	}
-	if err := gen.generateLog(); err != nil {
-		return err
-	}
-	if err := gen.generateController(); err != nil {
-		return err
-	}
-	if err := gen.generateDto(); err != nil {
-		return err
-	}
-	if err := gen.generategenice(); err != nil {
-		return err
-	}
-	if err := gen.generateModel(); err != nil {
+	if err := gen.generateModule(); err != nil {
 		return err
 	}
 	if err := gen.generateWeb(); err != nil {
@@ -69,20 +46,10 @@ func (gen *generator) Generate() error {
 	return nil	
 }
 
-// .gitignore生成
-func (gen *generator) generateGitignore() error {
-	code := "*.log\n*.db\n*.sqlite3\n.DS_Store\nmain\n.env\nlocal.env"
-	err := WriteFile(fmt.Sprintf("%s.gitignore", gen.path), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// cmd生成
-func (gen *generator) generateCmd() error {
-	source := "_originalcopy_/golang/cmd"
-	destination := gen.path + "cmd/"
+// templateコピー
+func (gen *generator) copyTemplate() error {
+	source := "_template/masmaint"
+	destination := gen.path
 
 	err := CopyDir(source, destination)
 	if err != nil {
@@ -91,1040 +58,151 @@ func (gen *generator) generateCmd() error {
 	return err
 }
 
-// config生成
-func (gen *generator) generateConfig() error {
-	path := gen.path + "config/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	source := "_originalcopy_/golang/config"
-	destination := gen.path + "config/"
-
-	err := CopyDir(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return gen.generateEnv()
-}
-
-// env生成
-func (gen *generator) generateEnv() error {
-	path := gen.path + "config/env/"
-
-	rdbmsCls := "postgresql"
-	if gen.rdbms == constant.MYSQL {
-		rdbmsCls = "mysql"
-	} else if gen.rdbms == constant.SQLITE_3350 {
-		rdbmsCls = "sqlite3"
-	}
-
-	source := fmt.Sprintf("_originalcopy_/golang/config-sub/env/local.%s.env", rdbmsCls)
-	destination := fmt.Sprintf("%slocal.env", path)
-
-	err := CopyFile(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-
-	return err
-}
-
-// core生成
-func (gen *generator) generateCore() error {
-	source := "_originalcopy_/golang/core"
-	destination := gen.path + "core/"
-	
-	err := CopyDir(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	return gen.generateDb()
-}
-
-// db生成
-func (gen *generator) generateDb() error {
-	path := gen.path + "core/db/"
-
+// module生成
+func (gen *generator) generateModules() error {
+	path := gen.path + "_template/masmaint/internal/module/"
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
 
-	rdbmsCls := "postgresql"
-	if gen.rdbms == constant.MYSQL {
-		rdbmsCls = "mysql"
-	} else if gen.rdbms == constant.SQLITE_3350 {
-		rdbmsCls = "sqlite3"
-	}
-
-	source := fmt.Sprintf("_originalcopy_/golang/core-sub/db/%s.go", rdbmsCls)
-	destination := fmt.Sprintf("%sdb.go", path)
-
-	err := CopyFile(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// log生成
-func (gen *generator) generateLog() error {
-	source := "_originalcopy_/golang/log"
-	destination := gen.path + "log/"
-
-	err := CopyDir(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// controller生成
-func (gen *generator) generateController() error {
-	path := gen.path + "controller/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	return gen.generateControllerFiles(path)
-}
-
-// controller内のファイル生成
-func (gen *generator) generateControllerFiles(path string) error {
-	if err := gen.generateControllerFileRouter(path); err != nil {
-		return err
-	}
-
-	for _, table := range *gen.tables {
-		if err := gen.generateControllerFile(&table, path); err != nil {
+	for table := range gen.tables {
+		if err := gen.generateModule(path, table); err != nil {
+			logger.Error(err.Error())
 			return err
 		}
 	}
 	return nil
 }
 
-const GO_CONTROLLER_ROUTER_FORMAT =
-`
-package controller
-
-import (
-	"github.com/gin-gonic/gin"
-
-	"masmaint/core/auth"
-)
-
-
-func SetRouter(r *gin.Engine) {
-
-	rm := r.Group("/mastertables", auth.NoopAuthMiddleware())
-	{
-		rm.GET("/", func(c *gin.Context) {
-			c.HTML(200, "index.html", gin.H{})
-		})
-		%s
-	}
-}
-`
-
-// controller/router.go生成
-func (gen *generator) generateControllerFileRouter(path string) error {
-	code := ""
-	for _, table := range *gen.tables {
-		tn := table.TableName
-		tnc := SnakeToCamel(tn)
-		tnp := SnakeToPascal(tn)
-
-		code += fmt.Sprintf("\n\t\t%sController := New%sController()", tnc, tnp) +
-			fmt.Sprintf("\n\t\trm.GET(\"/%s\", %sController.Get%sPage)", tn, tnc, tnp) +
-			fmt.Sprintf("\n\t\trm.GET(\"/api/%s\", %sController.Get%s)", tn, tnc, tnp) +
-			fmt.Sprintf("\n\t\trm.POST(\"/api/%s\", %sController.Post%s)", tn, tnc, tnp) +
-			fmt.Sprintf("\n\t\trm.PUT(\"/api/%s\", %sController.Put%s)", tn, tnc, tnp) +
-			fmt.Sprintf("\n\t\trm.DELETE(\"/api/%s\", %sController.Delete%s)\n", tn, tnc, tnp)
-	}
-
-	code = fmt.Sprintf(GO_CONTROLLER_ROUTER_FORMAT, code)
-
-	err := WriteFile(path + "router.go", code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// controller/*.go生成
-func (gen *generator) generateControllerFile(table *dto.Table, path string) error {
-	code := "package controller\n\nimport (\n\t\"github.com/gin-gonic/gin\"\n\n" +
-		"\tcerror \"masmaint/core/error\"\n\t\"masmaint/genice\"\n\t\"masmaint/dto\"\n)\n\n\n"
-
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code += gen.generateCodegeniceInterface(table) + "\n"
-
-	code += fmt.Sprintf("type %sController struct {\n", tnc) +
-		fmt.Sprintf("\t%sgen %sgenice\n", tni, tnp) +
-		"}\n\n"
-
-	code += fmt.Sprintf("func New%sController() *%sController {\n", tnp, tnc) +
-		fmt.Sprintf("\t%sgen := genice.New%sgenice()\n", tni, tnp) +
-		fmt.Sprintf("\treturn &%sController{%sgen}\n", tnc, tni) +
-		"}\n\n\n"
-
-	code += gen.generateControllerFileCodeGetPage(table) + "\n\n"
-	code += gen.generateControllerFileCodeGet(table) + "\n\n"
-	code += gen.generateControllerFileCodePost(table) + "\n\n"
-	code += gen.generateControllerFileCodePut(table) + "\n\n"
-	code += gen.generateControllerFileCodeDelete(table)
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// genice interfaceプログラム生成
-func (gen *generator) generateCodegeniceInterface(table *dto.Table) string {
-	tnp := SnakeToPascal(table.TableName)
-	tni := GetSnakeInitial(table.TableName)
-	return fmt.Sprintf("type %sgenice interface {\n", tnp) +
-		fmt.Sprintf("\tGetAll() ([]dto.%sDto, error)\n", tnp) +
-		fmt.Sprintf("\tCreate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tUpdate(%sDto *dto.%sDto) (dto.%sDto, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tDelete(%sDto *dto.%sDto) error\n", tni, tnp) +
-		"}\n"
-}
-
-// controllerのGetPageメソッドプログラム生成
-func (gen *generator) generateControllerFileCodeGetPage(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	return fmt.Sprintf("//GET /%s\n", tn) +
-		fmt.Sprintf("func (ctr *%sController) Get%sPage(c *gin.Context) {\n", tnc, tnp) +
-		fmt.Sprintf("\tc.HTML(200, \"%s.html\", gin.H{})\n", tn) +
-		"}\n"
-}
-
-// controllerのGetメソッドプログラム生成
-func (gen *generator) generateControllerFileCodeGet(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	return fmt.Sprintf("//GET /api/%s\n", tn) +
-		fmt.Sprintf("func (ctr *%sController) Get%s(c *gin.Context) {\n", tnc, tnp) +
-		fmt.Sprintf("\tret, err := ctr.%sgen.GetAll()\n\n", tni) +
-		"\tif err != nil {\n\t\tc.JSON(500, gin.H{})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n"
-}
-
-// controllerのPostメソッドプログラム生成
-func (gen *generator) generateControllerFileCodePost(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	return fmt.Sprintf("//POST /api/%s\n", tn) +
-		fmt.Sprintf("func (ctr *%sController) Post%s(c *gin.Context) {\n", tnc, tnp) +
-		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
-		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
-		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		fmt.Sprintf("\tret, err := ctr.%sgen.Create(&%sDto)\n\n", tni, tni) +
-		"\tif err != nil {\n\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
-		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
-		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n"
-}
-
-// controllerのPutメソッドプログラム生成
-func (gen *generator) generateControllerFileCodePut(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	return fmt.Sprintf("//PUT /api/%s\n", tn) +
-		fmt.Sprintf("func (ctr *%sController) Put%s(c *gin.Context) {\n", tnc, tnp) +
-		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
-		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
-		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		fmt.Sprintf("\tret, err := ctr.%sgen.Update(&%sDto)\n\n", tni, tni) +
-		"\tif err != nil {\n\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
-		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
-		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, ret)\n}\n"
-}
-
-// controllerのDeleteメソッドプログラム生成
-func (gen *generator) generateControllerFileCodeDelete(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	return fmt.Sprintf("//DELETE /api/%s\n", tn) +
-		fmt.Sprintf("func (ctr *%sController) Delete%s(c *gin.Context) {\n", tnc, tnp) +
-		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp) +
-		fmt.Sprintf("\tif err := c.ShouldBindJSON(&%sDto); err != nil {\n", tni) +
-		"\t\tc.JSON(400, gin.H{\"error\": err.Error()})\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		fmt.Sprintf("\tif err := ctr.%sgen.Delete(&%sDto); err != nil {\n", tni, tni) +
-		"\t\tif _, ok := err.(*cerror.InvalidArgumentError); ok {\n" +
-		"\t\t\tc.JSON(400, gin.H{})\n\t\t} else {\n\t\t\tc.JSON(500, gin.H{})\n\t\t}" +
-		"\n\t\tc.Abort()\n\t\treturn\n\t}\n\n" +
-		"\tc.JSON(200, gin.H{})\n}\n"
-}
-
-// dto生成
-func (gen *generator) generateDto() error {
-	path := gen.path + "dto/"
-
+// module/:table_name生成
+func (gen *generator) generateModule(path string, table ddlparse.Table) error {
+	pkg := strings.ToLower(table.Name)
+	path = path + pkg
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
-
-	return gen.generateDtoFiles(path)
+	return gen.generateModuleFiles(path)
 }
 
-// dto内のファイル生成
-func (gen *generator) generateDtoFiles(path string) error {
-	for _, table := range *gen.tables {
-		if err := gen.generateDtoFile(&table, path); err != nil {
-			return err
-		}
+// module/:table_name内のファイル生成
+func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) error {
+	if err := gen.generateControllerFile(path, table); err != nil {
+		return err
+	}
+	if err := gen.generateModelFile(path, table); err != nil {
+		return err
+	}
+	if err := gen.generateRequestFile(path, table); err != nil {
+		return err
+	}
+	if err := gen.generateRepositoryFile(path, table); err != nil {
+		return err
+	}
+	if err := gen.generateServiceFile(path, table); err != nil {
+		return err
 	}
 	return nil
 }
 
-// dto/*.go生成
-func (gen *generator) generateDtoFile(table *dto.Table, path string) error {
-	tn := table.TableName
-	tnp := SnakeToPascal(tn)
-	code := "package dto\n\n\n" + fmt.Sprintf("type %sDto struct {\n", tnp)
-
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		cnp := SnakeToPascal(cn)
-		code += fmt.Sprintf("\t%s any `json:\"%s\"`\n", cnp, cn)
-	}
-
-	code += "}"
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+// controller.go生成
+func (gen *generator) generateControllerFile(table ddlparse.Table, path string) error {
+	code := generateControllerCode(table)
+	err := WriteFile(fmt.Sprintf("%scontroller.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
 	return err
 }
 
-// genice生成
-func (gen *generator) generategenice() error {
-	path := gen.path + "genice/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	return gen.generategeniceFiles(path)
+// controller.go コード生成
+func (gen *generator) generateControllerFile(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	return fmt.Sprintf(
+		CONTROLLER_FORMAT, 
+		tn, tn, tn, tn, tn, tn, tn,
+	)
 }
 
-// genice内のファイル生成
-func (gen *generator) generategeniceFiles(path string) error {
-	for _, table := range *gen.tables {
-		if err := gen.generategeniceFile(&table, path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// genice/*.go生成
-func (gen *generator) generategeniceFile(table *dto.Table, path string) error {
-	code := "package genice\n\nimport (\n" +
-		"\tcerror \"masmaint/core/error\"\n\n\t\"masmaint/core/logger\"\n\t\"masmaint/model/entity\"\n" +
-		"\t\"masmaint/model/dao\"\n\t\"masmaint/dto\"\n)\n\n\n"
-
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code += gen.generateCodeDaoInterface(table) + "\n"
-
-	code += fmt.Sprintf("type %sgenice struct {\n", tnc) +
-		fmt.Sprintf("\t%sDao %sDao\n", tni, tnp) +
-		"}\n\n"
-
-	code += fmt.Sprintf("func New%sgenice() *%sgenice {\n", tnp, tnc) +
-		fmt.Sprintf("\t%sDao := dao.New%sDao()\n", tni, tnp) +
-		fmt.Sprintf("\treturn &%sgenice{%sDao}\n", tnc, tni) +
-		"}\n\n\n"
-
-	code += gen.generategeniceFileCodeGetAll(table) + "\n\n"
-	code += gen.generategeniceFileCodeGetOne(table) + "\n\n"
-	code += gen.generategeniceFileCodeCreate(table) + "\n\n"
-	code += gen.generategeniceFileCodeUpdate(table) + "\n\n"
-	code += gen.generategeniceFileCodeDelete(table)
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
+// model.go生成
+func (gen *generator) generateModelFile(table ddlparse.Table, path string) error {
+	code := generateModelCode(table)
+	err := WriteFile(fmt.Sprintf("%smodel.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
 	return err
 }
 
-// dao interfaceプログラム生成
-func (gen *generator) generateCodeDaoInterface(table *dto.Table) string {
-	tnp := SnakeToPascal(table.TableName)
-	tni := GetSnakeInitial(table.TableName)
+func dataTypeToGoType(dataType string) string {
+	dataType = strings.ToUpper(dataType)
 
-	return fmt.Sprintf("type %sDao interface {\n", tnp) +
-		fmt.Sprintf("\tSelectAll() ([]entity.%s, error)\n", tnp) +
-		fmt.Sprintf("\tSelect(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tInsert(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tUpdate(%s *entity.%s) (entity.%s, error)\n", tni, tnp, tnp) +
-		fmt.Sprintf("\tDelete(%s *entity.%s) error\n", tni, tnp) + "}\n"
-}
-
-// geniceのGetAllメソッドプログラム生成
-func (gen *generator) generategeniceFileCodeGetAll(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	return fmt.Sprintf("func (gen *%sgenice) GetAll() ([]dto.%sDto, error) {\n", tnc, tnp) +
-		fmt.Sprintf("\trows, err := gen.%sDao.SelectAll()\n", tni) +
-		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
-		fmt.Sprintf("\t\treturn []dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
-		fmt.Sprintf("\tvar ret []dto.%sDto\n", tnp) +
-		fmt.Sprintf("\tfor _, row := range rows {\n\t\tret = append(ret, row.To%sDto())\n\t}\n\n", tnp) +
-		"\treturn ret, nil\n}\n"
-}
-
-// geniceのGetOneメソッドプログラム生成
-func (gen *generator) generategeniceFileCodeGetOne(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code := fmt.Sprintf("func (gen *%sgenice) GetOne(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
-	
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			cnp := SnakeToPascal(col.ColumnName)
-			if isFirst {
-				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-				isFirst = false
-			} else {
-				code += "||\n"
-				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-			}
- 		}
-	}
-	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
-	code += fmt.Sprintf("\trow, err := gen.%sDao.Select(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"取得に失敗しました。\")\n\t}\n\n", tnp) +
-		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n"
-
-	return code
-}
-
-// geniceのCreateメソッドプログラム生成
-func (gen *generator) generategeniceFileCodeCreate(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code := fmt.Sprintf("func (gen *%sgenice) Create(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
-	
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			cnp := SnakeToPascal(col.ColumnName)
-			if isFirst {
-				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-				isFirst = false
-			} else {
-				code += "||\n"
-				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-			}
- 		}
-	}
-	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
-
-	code += fmt.Sprintf("\trow, err := gen.%sDao.Insert(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"登録に失敗しました。\")\n\t}\n\n", tnp) +
-		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n"
-
-	return code
-}
-
-// geniceのUpdateメソッドプログラム生成
-func (gen *generator) generategeniceFileCodeUpdate(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code := fmt.Sprintf("func (gen *%sgenice) Update(%sDto *dto.%sDto) (dto.%sDto, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
-	
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey || col.IsUpdAble {
-			cnp := SnakeToPascal(col.ColumnName)
-			if isFirst {
-				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-				isFirst = false
-			} else {
-				code += "||\n"
-				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-			}
- 		}
-	}
-	code += "{\n"
-	code += fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n", tnp)
-	code += fmt.Sprintf("\trow, err := gen.%sDao.Update(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
-		fmt.Sprintf("\t\treturn dto.%sDto{}, cerror.NewDaoError(\"更新に失敗しました。\")\n\t}\n\n", tnp) +
-		fmt.Sprintf("\treturn row.To%sDto(), nil\n", tnp) +
-		"}\n"
-
-	return code
-}
-
-// geniceのDeleteメソッドプログラム生成
-func (gen *generator) generategeniceFileCodeDelete(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-
-	code := fmt.Sprintf("func (gen *%sgenice) Delete(%sDto *dto.%sDto) error {\n", tnc, tni, tnp) +
-		fmt.Sprintf("\tvar %s *entity.%s = entity.New%s()\n\n", tni, tnp, tnp)
-	
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			cnp := SnakeToPascal(col.ColumnName)
-			if isFirst {
-				code += fmt.Sprintf("\tif %s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-				isFirst = false
-			} else {
-				code += "||\n"
-				code += fmt.Sprintf("\t%s.Set%s(%sDto.%s) != nil ", tni, cnp, tni, cnp)
-			}
- 		}
-	}
-	code += "{\n"
-	code += "\t\treturn cerror.NewInvalidArgumentError(\"不正な値があります。\")\n\t}\n\n"
-	code += fmt.Sprintf("\terr := gen.%sDao.Delete(%s)\n", tni, tni) +
-		"\tif err != nil {\n\t\tlogger.Error(err.Error())\n" +
-		"\t\treturn cerror.NewDaoError(\"削除に失敗しました。\")\n\t}\n\n" +
-		"\treturn nil\n}\n"
-
-	return code
-}
-
-// model生成
-func (gen *generator) generateModel() error {
-	if err := gen.generateEntity(); err != nil {
-		return err
-	}
-	if err := gen.generateDao(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// entity生成
-func (gen *generator) generateEntity() error {
-	path := gen.path + "model/entity/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	return gen.generateEntityFiles(path)
-}
-
-// entity内のファイル生成
-func (gen *generator) generateEntityFiles(path string) error {
-	for _, table := range *gen.tables {
-		if err := gen.generateEntityFile(&table, path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// CSVフォーマットのカラム型からentityフィールド用の型取得
-func (gen *generator) getEntityFieldType(col *dto.Column) string {
-	isNotNull := col.IsNotNull
-	isPrimaryKey := col.IsPrimaryKey
-	colType := col.ColumnType
-
-	if colType == "s" || colType == "t" {
-		if isNotNull || isPrimaryKey {
-			return "string"
-		}
-		return "sql.NullString"
-	}
-	if colType == "i" {
-		if isNotNull || isPrimaryKey {
-			return "int64"
-		}
-		return "sql.NullInt64"
-	}
-	if colType == "f" {
-		if isNotNull || isPrimaryKey {
-			return "float64"
-		}
-		return "sql.NullFloat64"
-	}
-	return ""
-}
-
-// entity/*.go生成
-func (gen *generator) generateEntityFile(table *dto.Table, path string) error {
-	tn := table.TableName
-	tnp := SnakeToPascal(tn)
-	code := "package entity\n\nimport (\n" +
-		"\t\"database/sql\"\n\n\t\"masmaint/dto\"\n\t\"masmaint/core/utils\"\n)\n\n\n"
-
-	code += fmt.Sprintf("type %s struct {\n", tnp)
-	for _, col := range table.Columns {
-		cn := col.ColumnName
-		cnp := SnakeToPascal(cn)
-		code += fmt.Sprintf("\t%s %s `db:\"%s\"`\n", cnp, gen.getEntityFieldType(&col), cn)
-	}
-	code += "}\n\n"
-	code += gen.generateEntityFileCodeSetters(table) + "\n"
-	code += gen.generateEntityFileCodeToDto(table)
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// entityのセッタープログラム生成
-func (gen *generator) generateEntityFileCodeSetters(table *dto.Table) string {
-	tnp := SnakeToPascal(table.TableName)
-
-	code := fmt.Sprintf("func New%s() *%s {\n\treturn &%s{}\n}\n\n", tnp, tnp, tnp)
-	for _, col := range table.Columns {
-		code += gen.generateEntityFileCodeSetter(table, &col)
-	}
-	
-	return code
-}
-
-// entityのセッタープログラム生成
-func (gen *generator) generateEntityFileCodeSetter(table *dto.Table, col *dto.Column) string {
-	tnp := SnakeToPascal(table.TableName)
-	colType := gen.getEntityFieldType(col)
-	cnp := SnakeToPascal(col.ColumnName)
-	cnc := SnakeToCamel(col.ColumnName)
-
-	code := fmt.Sprintf("func (e *%s) Set%s(%s any) error {\n", tnp, cnp, cnc)
-
-	switch colType {
-	case "string":
-		code += fmt.Sprintf("\te.%s = utils.ToString(%s)\n\treturn nil\n}\n\n", cnp, cnc)
-
-	case "int64":
-		code += fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
-			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
-
-	case "float64":
-		code += fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
-			fmt.Sprintf("\te.%s = x\n\treturn nil\n}\n\n", cnp)
-			
-	case "sql.NullString":
-		if col.ColumnType == "t" {
-			code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc)
-		} else {
-			code += fmt.Sprintf("\tif %s == nil {\n", cnc)
-		}
-		code += fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
-			fmt.Sprintf("\te.%s.String = utils.ToString(%s)\n", cnp, cnc) +
-			fmt.Sprintf("\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp)
-
-	case "sql.NullInt64":
-		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
-			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
-			fmt.Sprintf("\tx, err := utils.ToInt64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
-			fmt.Sprintf("\te.%s.Int64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
-
-	case "sql.NullFloat64":
-		code += fmt.Sprintf("\tif %s == nil || %s == \"\" {\n", cnc, cnc) +
-			fmt.Sprintf("\t\te.%s.Valid = false\n\t\treturn nil\n\t}\n\n", cnp) +
-			fmt.Sprintf("\tx, err := utils.ToFloat64(%s)\n\tif err != nil {\n\t\treturn err\n\t}\n", cnc) +
-			fmt.Sprintf("\te.%s.Float64 = x\n\te.%s.Valid = true\n\treturn nil\n}\n\n", cnp, cnp)
-	}
-
-	return code
-}
-
-// entityのToDtoメソッドプログラム生成
-func (gen *generator) generateEntityFileCodeToDto(table *dto.Table) string {
-	tnp := SnakeToPascal(table.TableName)
-	tni := GetSnakeInitial(table.TableName)
-
-	code := fmt.Sprintf("func (e *%s) To%sDto() dto.%sDto {\n", tnp, tnp, tnp) +
-		fmt.Sprintf("\tvar %sDto dto.%sDto\n\n", tni, tnp)
-	for _, col := range table.Columns {
-		colType := gen.getEntityFieldType(&col)
-		cnp := SnakeToPascal(col.ColumnName)
-
-		switch colType {
-		case "string", "int64", "float64":
-			code += fmt.Sprintf("\t%sDto.%s = e.%s\n", tni, cnp, cnp)
-
-		case "sql.NullString":
-			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
-				fmt.Sprintf("\t\t%sDto.%s = e.%s.String\n\t}\n", tni, cnp, cnp)
-
-		case "sql.NullInt64":
-			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
-				fmt.Sprintf("\t\t%sDto.%s = e.%s.Int64\n\t}\n", tni, cnp, cnp)
-				
-		case "sql.NullFloat64":
-			code += fmt.Sprintf("\tif e.%s.Valid != false {\n", cnp) +
-				fmt.Sprintf("\t\t%sDto.%s = e.%s.Float64\n\t}\n", tni, cnp, cnp)	
-		}
-	}
-
-	code += fmt.Sprintf("\n\treturn %sDto\n}\n", tni)
-	return code
-}
-
-// dao生成
-func (gen *generator) generateDao() error {
-	path := gen.path + "model/dao/"
-
-	if err := os.MkdirAll(path, 0777); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	return gen.generateDaoFiles(path)
-}
-
-// dao内のファイル生成
-func (gen *generator) generateDaoFiles(path string) error {
-	for _, table := range *gen.tables {
-		if err := gen.generateDaoFile(&table, path); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// dao/*.go生成
-func (gen *generator) generateDaoFile(table *dto.Table, path string) error {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	code := "package dao\n\nimport (\n" +
-		"\t\"database/sql\"\n\n\t\"masmaint/core/db\"\n\t\"masmaint/model/entity\"\n)\n\n\n"
-
-	code += fmt.Sprintf("type %sDao struct {\n\tdb *sql.DB\n}\n\n", tnc) +
-		fmt.Sprintf("func New%sDao() *%sDao {\n", tnp, tnc) +
-		fmt.Sprintf("\tdb := db.GetDB()\n\treturn &%sDao{db}\n}\n\n\n", tnc)
-
-	code += gen.generateDaoFileCodeSelectAll(table) + "\n\n"
-	code += gen.generateDaoFileCodeSelect(table) + "\n\n"
-	if gen.rdbms == constant.MYSQL {
-		// RETURNING が使えない場合
-		code += gen.generateDaoFileCodeInsert_MySQL(table) + "\n\n"
-		code += gen.generateDaoFileCodeUpdate_MySQL(table) + "\n\n"
+	if (strings.Contains(dataType, "INT") || strings.Contains(dataType, "BIT") || strings.Contains(dataType, "SERIAL")) {
+		return "int"
+	} else if strings.Contains(dataType, "NUMERIC") ||
+		strings.Contains(dataType, "DECIMAL") ||
+		strings.Contains(dataType, "FLOAT") ||
+		strings.Contains(dataType, "REAL") ||
+		strings.Contains(dataType, "DOUBLE") {
+		return "float64"
 	} else {
-		code += gen.generateDaoFileCodeInsert(table) + "\n\n"
-		code += gen.generateDaoFileCodeUpdate(table) + "\n\n"
-	}
-	code += gen.generateDaoFileCodeDelete(table)
-
-	err := WriteFile(fmt.Sprintf("%s%s.go", path, tn), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
-
-// SELECT ORDER BYで指定するpkのカンマ区切り文字列生成
-func (gen *generator) concatPrimaryKeyWithCommas(cols []dto.Column) string {
-	var ls []string
-	for _, col := range cols {
-		if col.IsPrimaryKey {
-			ls = append(ls, col.ColumnName)
-		}
-	}
-	return strings.Join(ls, ", ")
-}
-
-// バインド変数文字列生成
-func (gen *generator) getBindVariable(n int) string {
-	if gen.rdbms == constant.POSTGRESQL {
-		return fmt.Sprintf("$%d", n)
-	} else {
-		return "?"
+		return "string"
 	}
 }
 
-// daoのSelectAllメソッド生成
-func (gen *generator) generateDaoFileCodeSelectAll(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) SelectAll() ([]entity.%s, error) {\n", tnc, tnp) +
-		fmt.Sprintf("\tvar ret []entity.%s\n\n\trows, err := rep.db.Query(\n", tnp)
 
-	code += "\t\t`SELECT\n"
-	for i, col := range table.Columns {
-		if i == 0 {
-			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
-		} else {
-			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
-		}
+func getFieldName(columnName, tableName string) string {
+	cn := strings.ToLower(columnName)
+	tn := strings.ToLower(tableName)
+	pf := tn + "_"
+	if (strings.HasPrefix(cn, pf)) {
+		cn = cn[len(pf):]
 	}
-	code += fmt.Sprintf("\n\t\t FROM %s\n\t\t ORDER BY %s ASC", tn, gen.concatPrimaryKeyWithCommas(table.Columns))
-	code += "`,\n\t)\n\n\tif err != nil {\n\t\treturn nil, err\n\t}\n\n"
-
-	code += fmt.Sprintf("\tfor rows.Next() {\n\t\t%s := entity.%s{}\n\t\terr = rows.Scan(\n", tni, tnp)
-	for _, col := range table.Columns {
-		cnp := SnakeToPascal(col.ColumnName)
-		code += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, cnp)
-	}
-	code += fmt.Sprintf("\t\t)\n\t\tif err != nil {\n\t\t\tbreak\n\t\t}\n\t\tret = append(ret, %s)\n\t}\n\n", tni)
-	code += "\treturn ret, err\n}\n"
-
-	return code
+	return snakeToPascal(cn)
 }
 
-// daoのSelectメソッド生成
-func (gen *generator) generateDaoFileCodeSelect(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Select(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
-
-	code += "\t\t`SELECT\n"
-	for i, col := range table.Columns {
-		if i == 0 {
-			code += fmt.Sprintf("\t\t\t%s\n", col.ColumnName)
-		} else {
-			code += fmt.Sprintf("\t\t\t,%s\n", col.ColumnName)
-		}
+func isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
+	if (column.Constraint.IsNotNull) {
+		return false
 	}
-	code += fmt.Sprintf("\t\t FROM %s\n\t\t WHERE ", tn)
+	if (column.Constraint.IsPrimaryKey) {
+		return false
+	}
+	if (column.Constraint.IsAutoincrement) {
+		return false
+	}
 
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, gen.getBindVariable(bindCount))
+	for _, pk := range constraints.PrimaryKey {
+		for _, name := range pk.ColumnNames {
+			if (column.Name == name) {
+				return false
 			}
 		}
 	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-
-	code += "\t).Scan(\n"
-	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
-	}
-	code += "\t)\n\n\treturn ret, err\n}\n" 
-
-	return code
+	return true
 }
 
-// INSERT VALUES (...)用のバインド変数のカンマ区切り文字列生成
-func (gen *generator) concatBindVariableWithCommas(bindCount int) string {
-	var ls []string
-	for i := 1; i <= bindCount; i++ {
-		ls = append(ls, gen.getBindVariable(i))
-	}
-	return strings.Join(ls, ",")
-}
-
-// daoのInsertメソッド生成
-func (gen *generator) generateDaoFileCodeInsert(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
+// model.go コード
+func (gen *generator)generateModelCode(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Insert(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
-
-	code += fmt.Sprintf("\t\t`INSERT INTO %s (\n", tn)
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
-			} else {
-				code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
-			}
+	
+	fields := ""
+	for _, column := range table.Columns {
+		cn := strings.ToLower(column.Name)
+		fields += "\t" + getFieldName(cn ,tn) + " ";
+		if isNullColumn(column, table.Constraints) {
+			fields += "*"
 		}
+		fields += dataTypeToGoType(column.DataType.Name) + " "
+		fields += "`db:\"" + cn + "\" json:\"" + cn + "\"`\n"
 	}
-	code += fmt.Sprintf("\n\t\t ) VALUES (%s)\n\t\t RETURNING\n", gen.concatBindVariableWithCommas(bindCount))
-	for i, col := range table.Columns {
-		if i == 0 {
-			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
-		} else {
-			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
-		}
-	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-
-	code += "\t).Scan(\n"
-	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
-	}
-	code += "\t)\n\n\treturn ret, err\n}\n" 
-
-	return code
-}
-
-// daoのUpdateメソッド生成
-func (gen *generator) generateDaoFileCodeUpdate(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Update(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp) +
-		fmt.Sprintf("\tvar ret entity.%s\n\n\terr := rep.db.QueryRow(\n", tnp)
-
-	code += fmt.Sprintf("\t\t`UPDATE %s\n\t\t SET\n", tn)
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("\t\t\t%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			} else {
-				code += fmt.Sprintf("\n\t\t\t,%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "\n\t\t WHERE "
-
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			bindCount += 1
-			if isFirst {
-				code += fmt.Sprintf("%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-				isFirst = false
-			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "\n\t\t RETURNING \n"
-
-	for i, col := range table.Columns {
-		if i == 0 {
-			code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
-		} else {
-			code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
-		}
-	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-
-	code += "\t).Scan(\n"
-	for _, col := range table.Columns {
-		code += fmt.Sprintf("\t\t&ret.%s,\n", SnakeToPascal(col.ColumnName))
-	}
-	code += "\t)\n\n\treturn ret, err\n}\n" 
-
-	return code
-}
-
-// daoのDeleteメソッド生成
-func (gen *generator) generateDaoFileCodeDelete(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Delete(%s *entity.%s) error {\n", tnc, tni, tnp) +
-		"\t_, err := rep.db.Exec(\n"
-
-	code += fmt.Sprintf("\t\t`DELETE FROM %s\n\t\t WHERE ", tn)
-
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-	code += "\t)\n\n\treturn err\n}\n" 
-
+	fields = strings.TrimSuffix(fields, "\n")
+	return fmt.Sprintf(
+		MODEL_FORMAT, 
+		tn, tnp, fields,
+	)
 	return code
 }
 
@@ -1139,126 +217,6 @@ func (gen *generator) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool
 	return dto.Column{}, false
 }
 
-// daoのInsertメソッド生成
-func (gen *generator) generateDaoFileCodeInsert_MySQL(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	aicol, hasAICol := gen.getAutoIncrementColumn(table)
-	code := fmt.Sprintf("func (rep *%sDao) Insert(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp)
-
-	if hasAICol {
-		code += "\tresult, err := rep.db.Exec(\n"
-	} else {
-		code += "\t_, err := rep.db.Exec(\n"
-	}
-	
-	code += fmt.Sprintf("\t\t`INSERT INTO %s (\n", tn)
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("\t\t\t%s", col.ColumnName)
-			} else {
-				code += fmt.Sprintf("\n\t\t\t,%s", col.ColumnName)
-			}
-		}
-	}
-	code += fmt.Sprintf("\n\t\t ) VALUES (%s)`,\n", gen.concatBindVariableWithCommas(bindCount))
-
-	for _, col := range table.Columns {
-		if col.IsInsAble {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-	code += fmt.Sprintf("\t)\n\n\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp)
-
-	if hasAICol {
-		code += "\tlastInsertId, err := result.LastInsertId()\n" + 
-			fmt.Sprintf("\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp) +
-			fmt.Sprintf("\t%s.Set%s(lastInsertId)\n\n", tni, SnakeToPascal(aicol.ColumnName))
-	}
-
-	code += fmt.Sprintf("\treturn rep.Select(%s)\n}\n", tni)
-	return code
-}
-
-// daoのUpdateメソッド生成
-func (gen *generator) generateDaoFileCodeUpdate_MySQL(table *dto.Table) string {
-	tn := table.TableName
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
-	code := fmt.Sprintf("func (rep *%sDao) Update(%s *entity.%s) (entity.%s, error) {\n", tnc, tni, tnp, tnp)
-	code += "\t_, err := rep.db.Exec(\n"
-
-	code += fmt.Sprintf("\t\t`UPDATE %s\n\t\t SET\n", tn)
-	bindCount := 0
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			bindCount += 1
-			if bindCount == 1 {
-				code += fmt.Sprintf("\t\t\t%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			} else {
-				code += fmt.Sprintf("\n\t\t\t,%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "\n\t\t WHERE "
-
-	isFirst := true
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			bindCount += 1
-			if isFirst {
-				code += fmt.Sprintf("%s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-				isFirst = false
-			} else {
-				code += fmt.Sprintf("\n\t\t    AND %s = %s", col.ColumnName, gen.getBindVariable(bindCount))
-			}
-		}
-	}
-	code += "`,\n"
-
-	for _, col := range table.Columns {
-		if col.IsUpdAble {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey {
-			code += fmt.Sprintf("\t\t%s.%s,\n", tni, SnakeToPascal(col.ColumnName))
-		}
-	}
-
-	code += fmt.Sprintf("\t)\n\n\tif err != nil {\n\t\treturn entity.%s{}, err\n\t}\n\n", tnp)
-	code += fmt.Sprintf("\treturn rep.Select(%s)\n}\n", tni)
-
-	return code
-}
-
-// web生成
-func (gen *generator) generateWeb() error {
-	source := "_originalcopy_/golang/web"
-	destination := gen.path + "web/"
-
-	err := CopyDir(source, destination)
-	if err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-
-	if err := gen.generateStatic(); err != nil {
-		return err
-	}
-	if err := gen.generateTemplate(); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // static生成
 func (gen *generator) generateStatic() error {
