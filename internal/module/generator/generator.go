@@ -206,17 +206,118 @@ func (gen *generator)generateModelCode(table ddlparse.Table) string {
 	return code
 }
 
-// AUTO_INCREMENTのカラム取得
-// このシステムではPK・入力不可・整数型のカラムはAUTO_INCREMENTのカラムと判定する
-func (gen *generator) getAutoIncrementColumn(table *dto.Table) (dto.Column, bool) {
-	for _, col := range table.Columns {
-		if col.IsPrimaryKey && !col.IsInsAble && (col.ColumnType == "i") {
-			return col, true
-		}
+// request.go生成
+func (gen *generator) generateRequestFile(table ddlparse.Table, path string) error {
+	code := codeRequest(table)
+	err := WriteFile(fmt.Sprintf("%srequest.go", path), code)
+	if err != nil {
+		logger.Error(err.Error())
 	}
-	return dto.Column{}, false
+	return err
 }
 
+// request.go コード
+func (gen *generator)codeRequest(table ddlparse.Table) string {
+	return fmt.Sprintf(
+		REQUEST_FORMAT, 
+		strings.ToLower(table.Name), 
+		gen.codeRequestPostBodyFields(table), 
+		gen.codeRequestPutBodyFields(table),
+		gen.codeRequestDeleteBodyFields(table),
+	)
+	return code
+}
+
+func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+	
+	code := ""
+	for _, column := range table.Columns {
+		if c.Constraint.IsAutoincrement {
+			return false
+		}
+		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+			return false
+		}
+		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+			return false
+		}
+		cn := strings.ToLower(column.Name)
+		code += "\t" + getFieldName(cn ,tn) + " ";
+		if isNullColumn(column, table.Constraints) {
+			code += "*"
+		}
+		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += "`json:\"" + cn + "\""
+		if isNullColumn(column, table.Constraints) {
+			code += " binding:\"required\"`\n"
+		}
+	}
+	return strings.TrimSuffix(code, "\n")
+}
+
+// request.go コード
+func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+	
+	code := ""
+	for _, column := range table.Columns {
+		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+			return false
+		}
+		cn := strings.ToLower(column.Name)
+		code += "\t" + getFieldName(cn ,tn) + " ";
+		if isNullColumn(column, table.Constraints) {
+			code += "*"
+		}
+		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += "`json:\"" + cn + "\""
+		if isNullColumn(column, table.Constraints) {
+			code += " binding:\"required\"`\n"
+		}
+	}
+	return strings.TrimSuffix(code, "\n")
+}
+
+func getPKColumns(table ddlparse.Table) []ddlparse.Column {
+	pkcols := []string{}
+	for _, pk := range table.Constraints.PrimaryKey {
+		for _, name := range pk.ColumnNames {
+			pkcols = append(pkcols, name)
+		}
+	}
+
+	names := []string{}
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if c.Constraint.IsPrimaryKey || contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
+			if !contains(names, c.Name) {
+				names = append(names, c.Name)
+				ret = append(ret, c)
+			}
+		}
+	}
+	return ret
+}
+
+func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
+	code := ""
+	for _, column := range getPKColumns(table) {
+		cn := strings.ToLower(column.Name)
+		code += "\t" + getFieldName(cn ,tn) + " ";
+		if isNullColumn(column, table.Constraints) {
+			code += "*"
+		}
+		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += "`json:\"" + cn + "\""
+		if isNullColumn(column, table.Constraints) {
+			code += " binding:\"required\"`\n"
+		}
+	}
+	return strings.TrimSuffix(code, "\n")
+}
 
 // static生成
 func (gen *generator) generateStatic() error {
