@@ -108,7 +108,7 @@ func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) err
 
 // controller.go生成
 func (gen *generator) generateControllerFile(table ddlparse.Table, path string) error {
-	code := generateControllerCode(table)
+	code := codeController(table)
 	err := WriteFile(fmt.Sprintf("%scontroller.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -117,7 +117,7 @@ func (gen *generator) generateControllerFile(table ddlparse.Table, path string) 
 }
 
 // controller.go コード生成
-func (gen *generator) generateControllerFile(table ddlparse.Table) string {
+func (gen *generator) codeController(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	return fmt.Sprintf(
 		CONTROLLER_FORMAT, 
@@ -127,7 +127,7 @@ func (gen *generator) generateControllerFile(table ddlparse.Table) string {
 
 // model.go生成
 func (gen *generator) generateModelFile(table ddlparse.Table, path string) error {
-	code := generateModelCode(table)
+	code := codeModel(table)
 	err := WriteFile(fmt.Sprintf("%smodel.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -184,7 +184,7 @@ func isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) 
 }
 
 // model.go コード
-func (gen *generator)generateModelCode(table ddlparse.Table) string {
+func (gen *generator)codeModel(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
 	
@@ -203,7 +203,6 @@ func (gen *generator)generateModelCode(table ddlparse.Table) string {
 		MODEL_FORMAT, 
 		tn, tnp, fields,
 	)
-	return code
 }
 
 // request.go生成
