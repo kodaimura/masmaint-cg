@@ -277,3 +277,99 @@ const REQPOSITORY_FORMAT_DELETE =
 
 	return err
 }`
+
+const SERVICE_FORMAT =
+`package %s
+
+import (
+	"masmaint/internal/core/logger"
+	"masmaint/internal/core/utils"
+)
+
+type Service interface {
+	Get() ([]%s, error)
+	Create(input PostBody) (%s, error)
+	Update(input PutBody) (%s, error)
+	Delete(input DeleteBody) error
+}
+
+type service struct {
+	repository Repository
+}
+
+func NewService() Service {
+	return &service{
+		repository: NewRepository(),
+	}
+}
+
+
+func (srv *service) Get() ([]%s, error) {
+	rows, err := srv.repository.Get(&%s{})
+	if err != nil {
+		logger.Error(err.Error())
+		return []%s{}, err
+	}
+	return rows, nil
+}
+
+
+%s
+
+
+%s
+
+
+func (srv *service) Delete(input DeleteBody) error {
+	var model %s
+	utils.MapFields(&model, input)
+
+	err := srv.repository.Delete(&model, nil)
+	if err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}`
+
+const SERVICE_FORMAT_CREATE =
+`func (srv *service) Create(input PostBody) (%s, error) {
+	var model %s
+	utils.MapFields(&model, input)
+
+	err := srv.repository.Insert(&model, nil)
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, err
+	}
+
+	return srv.repository.GetOne(&%s{ %s })
+}`
+
+const SERVICE_FORMAT_CREATE_AI =
+`func (srv *service) Create(input PostBody) (%s, error) {
+	var model %s
+	utils.MapFields(&model, input)
+
+	%s, err := srv.repository.Insert(&model, nil)
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, err
+	}
+
+	return srv.repository.GetOne(&%s{ %s })
+}`
+
+const SERVICE_FORMAT_UPDATE =
+`func (srv *service) Update(input PutBody) (%s, error) {
+	var model %s
+	utils.MapFields(&model, input)
+
+	err := srv.repository.Update(&model, nil)
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, err
+	}
+
+	return srv.repository.GetOne(&%s{ %s })
+}`

@@ -598,6 +598,89 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	) 
 }
 
+// service.go生成
+func (gen *generator) generateServiceFile(table ddlparse.Table, path string) error {
+	code := codeService(table)
+	err := WriteFile(fmt.Sprintf("%sservice.go", path), code)
+	if err != nil {
+		logger.Error(err.Error())
+	}
+	return err
+}
+
+func (gen *generator) codeService(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+	return fmt.Sprintf(
+		SERVICE_FORMAT, 
+		tn, tnp, tnp, tnp, tnp, tnp, tnp,
+		gen.codeServiceCreate(table),
+		gen.codeServiceUpdate(table),
+		tnp,
+	)
+}
+
+func (gen *generator)codeServiceCreate(table ddlparse.Table) string {
+	_, found := getAutoIncrementColumn(table)
+	if found {
+		return gen.codeServiceCreateAI(table)
+	}
+	return gen.codeServiceCreateNomal(table)
+}
+
+func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+
+	fields := ""
+	for i, column := range getPKColumns(table) {
+		if i != 0 {
+			fields += ", "
+		} 
+		fn := getFieldName(c.Name ,tn)
+		fields += fmt.Sprintf("%s: input.%s", fn, fn)
+	}
+
+	return fmt.Sprintf(
+		SERVICE_FORMAT_CREATE,
+		tnp, tnp, tnp, tnp, fields,
+	) 
+}
+
+
+func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+	aiColumn, _ := getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aiColumn.Name)
+	aicnc := SnakeToCamel(aicn)
+	fn := getFieldName(aicn ,tn)
+
+	return fmt.Sprintf(
+		SERVICE_FORMAT_CREATE_AI,
+		tnp, tnp, aicnc, tnp, tnp, fmt.Sprintf("%s: %s", fn, aicnc),
+	) 
+}
+
+func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+
+	fields := ""
+	for i, column := range getPKColumns(table) {
+		if i != 0 {
+			fields += ", "
+		} 
+		fn := getFieldName(c.Name ,tn)
+		fields += fmt.Sprintf("%s: input.%s", fn, fn)
+	}
+
+	return fmt.Sprintf(
+		SERVICE_FORMAT_UPDATE,
+		tnp, tnp, tnp, tnp, fields,
+	) 
+}
+
 // static生成
 func (gen *generator) generateStatic() error {
 	if err := gen.generateCss(); err != nil {
