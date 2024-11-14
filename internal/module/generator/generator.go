@@ -318,6 +318,286 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
+func generateRepositoryFile(table ddlparse.Table, path string) error {
+	code := codeRepository(table)
+	err := WriteFile(fmt.Sprintf("%srepository.go", path), code)
+	if err != nil {
+		logger.Error(err.Error())
+	}
+	return err
+}
+
+func (gen *generator)codeRepository(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT,
+		tn, tnp, 
+		tni, tnp, tnp, 
+		tni, tnp, tnp, 
+		tni, tnp,  gen.codeRepositoryInsertReturnType(table),
+		tni, tnp, 
+		tni, tnp, 
+		tnc, tnp, tnp, tnc,
+		gen.codeRepositoryGet(table),
+		gen.codeRepositoryGetOne(table),
+		gen.codeRepositoryInsert(table),
+		gen.codeRepositoryUpdate(table),
+		gen.codeRepositoryDelete(table),
+	)
+}
+
+func (gen *generator)codeRepositoryInsertReturnType(table ddlparse.Table) string {
+	aiColumn, found := getAutoIncrementColumn(table)
+	if found {
+		return fmt.Sprintf("(%s, error)", dataTypeToGoType(aiColumn.DataType.Name))
+	}
+	return "error"
+}
+
+func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	query := "\n\t`SELECT\n"
+	for i, c := range table.Columns {
+		if i == 0 {
+			query += fmt.Sprintf("\t\t%s", c.Name)
+		} else {
+			query += fmt.Sprintf("\n\t\t,%s", c.Name)
+		}
+	}
+	query += fmt.Sprintf("\n\t FROM %s `", tn)
+
+	scan := "\n"
+	for _, c := range table.Columns {
+		scan += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, getFieldName(c.Name ,tn))
+	}
+	scan += "\t\t"
+
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT_GET,
+		tnc, tni, tnp, tnp, tni, 
+		query,
+		tnp, tnp, tni, tnp,
+		scan,
+		tnp, tni,
+	) 
+}
+
+func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	query := "\n\t`SELECT\n"
+	for i, c := range table.Columns {
+		if i == 0 {
+			query += fmt.Sprintf("\t\t%s", c.Name)
+		} else {
+			query += fmt.Sprintf("\n\t\t,%s", c.Name)
+		}
+	}
+	query += fmt.Sprintf("\n\t FROM %s `", tn)
+
+	scan := "\n"
+	for _, c := range table.Columns {
+		scan += fmt.Sprintf("\t\t&ret.%s,\n", getFieldName(c.Name ,tn))
+	}
+	scan += "\t"
+
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT_GETONE,
+		tnc, tni, tnp, tnp, tnp, tni, 
+		query,
+		scan,
+	) 
+}
+
+func getBindVar(dbDriver string, n int) string {
+	if dbDriver == "postgres" {
+		return fmt.Sprintf("$%d", n)
+	} else {
+		return "?"
+	}
+}
+
+
+func concatBindVariableWithCommas(dbDriver string, bindCount int) string {
+	var ls []string
+	for i := 1; i <= bindCount; i++ {
+		ls = append(ls, getBindVar(dbDriver, i))
+	}
+	return strings.Join(ls, ",")
+}
+
+
+func isInsertColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+
+	return true
+}
+
+
+func getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
+	for _, c := range table.Columns {
+		if c.Constraint.IsAutoincrement {
+			return c, true
+		}
+		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+			return c, true
+		}
+	}
+	return ddlparse.Column{}, false
+}
+
+
+func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
+	_, found := getAutoIncrementColumn(table)
+	if found {
+		if cf.DBDriver == "mysql" {
+			return gen.codeRepositoryInsertAIMySQL(table)
+		} else {
+			return gen.codeRepositoryInsertNomal(table)
+		}	
+	}
+	return gen.codeRepositoryInsertNomal(table)
+}
+
+
+func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := snakeToCamel(tn)
+	tnp := snakeToPascal(tn)
+	tni := getSnakeInitial(tn)
+
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	bindCount := 0
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			bindCount += 1
+			if bindCount == 1 {
+				query += fmt.Sprintf("\t\t%s", c.Name)
+			} else {
+				query += fmt.Sprintf("\n\t\t,%s", c.Name)
+			}
+		}	
+	}
+	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+
+	binds := "\n"
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		}
+	}
+	binds += "\t"
+
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT_INSERT,
+		tnc, tni, tnp,
+		query,
+		binds,
+	) 
+}
+
+
+func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	aiColumn, _ := getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aiColumn.Name)
+	aicnc := snakeToCamel(aicn)
+
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	bindCount := 0
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			bindCount += 1
+			if bindCount == 1 {
+				query += fmt.Sprintf("\t\t%s", c.Name)
+			} else {
+				query += fmt.Sprintf("\n\t\t,%s", c.Name)
+			}
+		}	
+	}
+	query += fmt.Sprintf("\n\t ) VALUES(%s)", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+	query += fmt.Sprintf("\n\t RETURNING %s`\n", aicn)
+
+	binds := "\n"
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		}
+	}
+	binds += "\t"
+
+	return fmt.Sprintf(
+		TEMPLATE_INSERT_AI,
+		tnc, tni, tnp,
+		query,
+		binds,
+		aicnc, aicnc, aicnc, aicnc,
+	) 
+}
+
+
+func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+	aiColumn, _ := getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aiColumn.Name)
+	aicnc := snakeToCamel(aicn)
+
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	bindCount := 0
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			bindCount += 1
+			if bindCount == 1 {
+				query += fmt.Sprintf("\t\t%s", c.Name)
+			} else {
+				query += fmt.Sprintf("\n\t\t,%s", c.Name)
+			}
+		}	
+	}
+	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+
+	binds := "\n"
+	for _, c := range table.Columns {
+		if isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		}
+	}
+	binds += "\t"
+
+	return fmt.Sprintf(
+		TEMPLATE_INSERT_AI_MYSQL,
+		tnc, tni, tnp,
+		query,
+		binds,
+		aicnc, aicnc, aicnc, aicnc,
+	) 
+}
+
 // static生成
 func (gen *generator) generateStatic() error {
 	if err := gen.generateCss(); err != nil {
