@@ -135,7 +135,7 @@ func (gen *generator) generateModelFile(table ddlparse.Table, path string) error
 	return err
 }
 
-func dataTypeToGoType(dataType string) string {
+func (gen *generator) dataTypeToGoType(dataType string) string {
 	dataType = strings.ToUpper(dataType)
 
 	if (strings.Contains(dataType, "INT") || strings.Contains(dataType, "BIT") || strings.Contains(dataType, "SERIAL")) {
@@ -152,17 +152,17 @@ func dataTypeToGoType(dataType string) string {
 }
 
 
-func getFieldName(columnName, tableName string) string {
+func (gen *generator) getFieldName(columnName, tableName string) string {
 	cn := strings.ToLower(columnName)
 	tn := strings.ToLower(tableName)
 	pf := tn + "_"
 	if (strings.HasPrefix(cn, pf)) {
 		cn = cn[len(pf):]
 	}
-	return snakeToPascal(cn)
+	return SnakeToPascal(cn)
 }
 
-func isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
+func (gen *generator) isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
 	if (column.Constraint.IsNotNull) {
 		return false
 	}
@@ -191,11 +191,11 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 	fields := ""
 	for _, column := range table.Columns {
 		cn := strings.ToLower(column.Name)
-		fields += "\t" + getFieldName(cn ,tn) + " ";
-		if isNullColumn(column, table.Constraints) {
+		fields += "\t" + gen.getFieldName(cn ,tn) + " ";
+		if gen.isNullColumn(column, table.Constraints) {
 			fields += "*"
 		}
-		fields += dataTypeToGoType(column.DataType.Name) + " "
+		fields += gen.dataTypeToGoType(column.DataType.Name) + " "
 		fields += "`db:\"" + cn + "\" json:\"" + cn + "\"`\n"
 	}
 	fields = strings.TrimSuffix(fields, "\n")
@@ -233,23 +233,17 @@ func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 	
 	code := ""
 	for _, column := range table.Columns {
-		if c.Constraint.IsAutoincrement {
-			return false
-		}
-		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-			return false
-		}
-		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-			return false
+		if !gen.isInsertColumn(column) {
+			continue
 		}
 		cn := strings.ToLower(column.Name)
-		code += "\t" + getFieldName(cn ,tn) + " ";
-		if isNullColumn(column, table.Constraints) {
+		code += "\t" + gen.getFieldName(cn ,tn) + " ";
+		if gen.isNullColumn(column, table.Constraints) {
 			code += "*"
 		}
-		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(column.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(column, table.Constraints) {
 			code += " binding:\"required\"`\n"
 		}
 	}
@@ -267,20 +261,20 @@ func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 			return false
 		}
 		cn := strings.ToLower(column.Name)
-		code += "\t" + getFieldName(cn ,tn) + " ";
-		if isNullColumn(column, table.Constraints) {
+		code += "\t" + gen.getFieldName(cn ,tn) + " ";
+		if gen.isNullColumn(column, table.Constraints) {
 			code += "*"
 		}
-		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(column.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(column, table.Constraints) {
 			code += " binding:\"required\"`\n"
 		}
 	}
 	return strings.TrimSuffix(code, "\n")
 }
 
-func getPKColumns(table ddlparse.Table) []ddlparse.Column {
+func (gen *generator)getPKColumns(table ddlparse.Table) []ddlparse.Column {
 	pkcols := []string{}
 	for _, pk := range table.Constraints.PrimaryKey {
 		for _, name := range pk.ColumnNames {
@@ -303,22 +297,22 @@ func getPKColumns(table ddlparse.Table) []ddlparse.Column {
 
 func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	code := ""
-	for _, column := range getPKColumns(table) {
+	for _, column := range gen.getPKColumns(table) {
 		cn := strings.ToLower(column.Name)
-		code += "\t" + getFieldName(cn ,tn) + " ";
-		if isNullColumn(column, table.Constraints) {
+		code += "\t" + gen.getFieldName(cn ,tn) + " ";
+		if gen.isNullColumn(column, table.Constraints) {
 			code += "*"
 		}
-		code += dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(column.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(column, table.Constraints) {
 			code += " binding:\"required\"`\n"
 		}
 	}
 	return strings.TrimSuffix(code, "\n")
 }
 
-func generateRepositoryFile(table ddlparse.Table, path string) error {
+func (gen *generator)generateRepositoryFile(table ddlparse.Table, path string) error {
 	code := codeRepository(table)
 	err := WriteFile(fmt.Sprintf("%srepository.go", path), code)
 	if err != nil {
@@ -351,9 +345,9 @@ func (gen *generator)codeRepository(table ddlparse.Table) string {
 }
 
 func (gen *generator)codeRepositoryInsertReturnType(table ddlparse.Table) string {
-	aiColumn, found := getAutoIncrementColumn(table)
+	aiColumn, found := gen.getAutoIncrementColumn(table)
 	if found {
-		return fmt.Sprintf("(%s, error)", dataTypeToGoType(aiColumn.DataType.Name))
+		return fmt.Sprintf("(%s, error)", gen.dataTypeToGoType(aiColumn.DataType.Name))
 	}
 	return "error"
 }
@@ -376,7 +370,7 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 
 	scan := "\n"
 	for _, c := range table.Columns {
-		scan += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		scan += fmt.Sprintf("\t\t\t&%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	scan += "\t\t"
 
@@ -408,7 +402,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 
 	scan := "\n"
 	for _, c := range table.Columns {
-		scan += fmt.Sprintf("\t\t&ret.%s,\n", getFieldName(c.Name ,tn))
+		scan += fmt.Sprintf("\t\t&ret.%s,\n", gen.getFieldName(c.Name ,tn))
 	}
 	scan += "\t"
 
@@ -420,25 +414,21 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	) 
 }
 
-func getBindVar(dbDriver string, n int) string {
-	if dbDriver == "postgres" {
-		return fmt.Sprintf("$%d", n)
-	} else {
-		return "?"
+
+func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
+	bindVar := "?"
+	if gen.rdbms == "postgres" {
+		bindVar := fmt.Sprintf("$%d", n)
 	}
-}
-
-
-func concatBindVariableWithCommas(dbDriver string, bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
-		ls = append(ls, getBindVar(dbDriver, i))
+		ls = append(ls, bindVar)
 	}
 	return strings.Join(ls, ",")
 }
 
 
-func isInsertColumn(c ddlparse.Column) bool {
+func (gen *generator)gen.isInsertColumn(c ddlparse.Column) bool {
 	if c.Constraint.IsAutoincrement {
 		return false
 	}
@@ -453,7 +443,7 @@ func isInsertColumn(c ddlparse.Column) bool {
 }
 
 
-func getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
+func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
 	for _, c := range table.Columns {
 		if c.Constraint.IsAutoincrement {
 			return c, true
@@ -467,7 +457,7 @@ func getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
 
 
 func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
-	_, found := getAutoIncrementColumn(table)
+	_, found := gen.getAutoIncrementColumn(table)
 	if found {
 		if cf.DBDriver == "mysql" {
 			return gen.codeRepositoryInsertAIMySQL(table)
@@ -481,14 +471,14 @@ func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := snakeToCamel(tn)
-	tnp := snakeToPascal(tn)
-	tni := getSnakeInitial(tn)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
 	bindCount := 0
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
+		if gen.isInsertColumn(c) {
 			bindCount += 1
 			if bindCount == 1 {
 				query += fmt.Sprintf("\t\t%s", c.Name)
@@ -497,12 +487,12 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 			}
 		}	
 	}
-	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		if gen.isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 		}
 	}
 	binds += "\t"
@@ -521,14 +511,14 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	aiColumn, _ := getAutoIncrementColumn(table)
+	aiColumn, _ := gen.getAutoIncrementColumn(table)
 	aicn := strings.ToLower(aiColumn.Name)
-	aicnc := snakeToCamel(aicn)
+	aicnc := SnakeToCamel(aicn)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
 	bindCount := 0
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
+		if gen.isInsertColumn(c) {
 			bindCount += 1
 			if bindCount == 1 {
 				query += fmt.Sprintf("\t\t%s", c.Name)
@@ -537,13 +527,13 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 			}
 		}	
 	}
-	query += fmt.Sprintf("\n\t ) VALUES(%s)", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+	query += fmt.Sprintf("\n\t ) VALUES(%s)", gen.concatBindVariableWithCommas(bindCount))
 	query += fmt.Sprintf("\n\t RETURNING %s`\n", aicn)
 
 	binds := "\n"
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		if gen.isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 		}
 	}
 	binds += "\t"
@@ -563,14 +553,14 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	aiColumn, _ := getAutoIncrementColumn(table)
+	aiColumn, _ := gen.getAutoIncrementColumn(table)
 	aicn := strings.ToLower(aiColumn.Name)
-	aicnc := snakeToCamel(aicn)
+	aicnc := SnakeToCamel(aicn)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
 	bindCount := 0
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
+		if gen.isInsertColumn(c) {
 			bindCount += 1
 			if bindCount == 1 {
 				query += fmt.Sprintf("\t\t%s", c.Name)
@@ -579,12 +569,12 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 			}
 		}	
 	}
-	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", concatBindVariableWithCommas(cf.DBDriver, bindCount))
+	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
 	for _, c := range table.Columns {
-		if isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, getFieldName(c.Name ,tn))
+		if gen.isInsertColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 		}
 	}
 	binds += "\t"
@@ -621,7 +611,7 @@ func (gen *generator) codeService(table ddlparse.Table) string {
 }
 
 func (gen *generator)codeServiceCreate(table ddlparse.Table) string {
-	_, found := getAutoIncrementColumn(table)
+	_, found := gen.getAutoIncrementColumn(table)
 	if found {
 		return gen.codeServiceCreateAI(table)
 	}
@@ -633,11 +623,11 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range getPKColumns(table) {
+	for i, column := range gen.getPKColumns(table) {
 		if i != 0 {
 			fields += ", "
 		} 
-		fn := getFieldName(c.Name ,tn)
+		fn := gen.getFieldName(c.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
@@ -651,10 +641,10 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
-	aiColumn, _ := getAutoIncrementColumn(table)
+	aiColumn, _ := gen.getAutoIncrementColumn(table)
 	aicn := strings.ToLower(aiColumn.Name)
 	aicnc := SnakeToCamel(aicn)
-	fn := getFieldName(aicn ,tn)
+	fn := gen.getFieldName(aicn ,tn)
 
 	return fmt.Sprintf(
 		SERVICE_FORMAT_CREATE_AI,
@@ -667,11 +657,11 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range getPKColumns(table) {
+	for i, column := range gen.getPKColumns(table) {
 		if i != 0 {
 			fields += ", "
 		} 
-		fn := getFieldName(c.Name ,tn)
+		fn := gen.getFieldName(c.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
@@ -680,7 +670,7 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 		tnp, tnp, tnp, tnp, fields,
 	) 
 }
-
+/*
 // static生成
 func (gen *generator) generateStatic() error {
 	if err := gen.generateCss(); err != nil {
@@ -995,262 +985,263 @@ func generateJsCode_doPost_requestBody(table *dto.Table) string {
 	}
 	return code
 }
-
-var JS_COMMON_CODE = ""
-const JS_FORMAT =
-`
-/* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/
-const createTrNew = (elem) => {
-	return %s
-} 
-
-/* <tr></tr>を作成 */
-const createTr = (elem) => {
-	return %s
-} 
-
-
-/* セットアップ */
-const setUp = () => {
-	fetch('api/%s')
-	.then(response => response.json())
-	.then(data  => renderTbody(data))
-	.then(() => {%s
-	});
-}
-
-
-/* 一括更新 */
-const doPutAll = async () => {
-	let successCount = 0;
-	let errorCount = 0;
-	%s
-
-	for (let i = 0; i < %s.length; i++) {
-		if (%s) {
-
-			let requestBody = {%s
-			}
-
-			await fetch('api/%s', {
-				method: 'PUT',
-				headers: {'Content-Type': 'application/json'},
-				body: JSON.stringify(requestBody)
-			})
-			.then(response => {
-				if (!response.ok){
-					throw new Error(response.statusText);
-				}
-  				return response.json();
-  			})
-			.then(data => {%s
-
-				successCount += 1;
-			}).catch(error => {
-				errorCount += 1;				
-			})
-		}
-	}
-
-	renderMessage('更新', successCount, true);
-	renderMessage('更新', errorCount, false);
-} 
-
-
-/* 新規登録 */
-const doPost = () => {%s
-
-	if (%s)
-	{
-		let requestBody = {%s
-		}
-
-		fetch('api/%s', {
-			method: 'POST',
-			headers: {'Content-Type': 'application/json'},
-			body: JSON.stringify(requestBody)
-		})
-		.then(response => {
-			if (!response.ok){
-				throw new Error(response.statusText);
-			}
-  			return response.json();
-  		})
-		.then(data => {
-			document.getElementById('new').remove();
-
-			let tmpElem = document.createElement('tbody');
-			tmpElem.innerHTML = createTr(data);
-			tmpElem.firstChild.addEventListener('change', changeAction);
-			document.getElementById('records').appendChild(tmpElem.firstChild);
-
-			tmpElem = document.createElement('tbody');
-			tmpElem.innerHTML = createTrNew();
-			document.getElementById('records').appendChild(tmpElem.firstChild);
-
-			renderMessage('登録', 1, true);
-		}).catch(error => {
-			renderMessage('登録', 1, false);
-		})
-	}
-}
-
-
-/* 一括削除 */
-const doDeleteAll = async () => {
-	let ls = getDeleteTarget();
-	let successCount = 0;
-	let errorCount = 0;
-
-	for (let x of ls) {
-		await fetch('api/%s', {
-			method: 'DELETE',
-			headers: {'Content-Type': 'application/json'},
-			body: x
-		})
-		.then(response => {
-			if (!response.ok){
-				throw new Error(response.statusText);
-			}
-			successCount += 1;
-  		}).catch(error => {
-			errorCount += 1;
-		});
-	}
-
-	setUp();
-
-	renderMessage('削除', successCount, true);
-	renderMessage('削除', errorCount, false);
-}
-`
-
-func generateHtmlCode_h2(table *dto.Table) string {
-	if table.TableNameJp != "" {
-		return fmt.Sprintf("%s（%s）", table.TableName, table.TableNameJp)
-	} else {
-		return table.TableName
-	}
-}
-
-func generateHtmlCode_tr(table *dto.Table) string {
-	code := ""
-	for _, col := range table.Columns {
-		if (col.IsNotNull || col.IsPrimaryKey) && (col.IsUpdAble || col.IsInsAble) {
-			code += fmt.Sprintf("\n\t\t\t\t<th>%s<spnn style='color:red;'>*</spnn></th>", col.ColumnName)
-		} else {
-			code += fmt.Sprintf("\n\t\t\t\t<th>%s</th>", col.ColumnName)
-		}
-	}
-	return code
-}
-
-const HTML_FORMAT =
-`
-<h2 class="ps-2 my-2">%s</h2>
-<hr class="mt-0 mb-2">
-<div class="w-100 vh-100 px-3">
-	<div id=message></div>
-	<button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#ModalDeleteAll">削除</button>
-	<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ModalSaveAll">保存</button>
-	<button type="button" class="btn btn-secondary" id="reload">リロード</button>
-	<div class="table-responsive mt-2" style="height:70%s">
-	<table class="table table-hover table-bordered table-sm">
-		<thead>
-			<tr class="fixed-table-header bg-light">
-				<th>削除</th>%s
-			</tr>
-		</thead>
-		<tbody id="records">
-		</tbody>
-	</table>
-	</div>
-</div>
-<script src="/static/js/%s.js"></script>
-`
-
-func generateHtmlCodeHeader_ul(tables *[]dto.Table) string {
-	code := ""
-	for _, table := range *tables {
-		tn := table.TableName
-		code += fmt.Sprintf("\n\t\t\t<li class='nav-item'><a href='/mastertables/%s' class='nav-link text-white'>%s</a></li>", tn, tn)
-	}
-	return code
-}
-
-const HTML_HEADER_FORMAT = 
-`<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<meta name=”description“ content=““ />
-	<meta name="viewport" content="width=device-width,initial-scale=1">
-	<link rel="stylesheet" href="/static/css/style.css">
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-	<title>マスタメンテナンス</title>
-</head>
-<body>
-
-<!-- 削除確認モーダル -->
-<div class="modal" tabindex="-1" id="ModalDeleteAll">
-<div class="modal-dialog">
-	<div class="modal-content">
-		<div class="modal-header">
-			<h4 class="modal-title">削除</h4>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-		</div>
-		<div class="modal-body">
-			<p>この操作は元には戻せません。よろしいですか？</p>
-		</div>
-		<div class="modal-footer">
-			<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-			<button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="ModalDeleteAllOk">削除</button>
-		</div>
-	</div>
-</div>
-</div>
-
-<!-- 保存確認モーダル -->
-<div class="modal" tabindex="-1" id="ModalSaveAll">
-<div class="modal-dialog">
-	<div class="modal-content">
-		<div class="modal-header">
-			<h4 class="modal-title">保存</h4>
-			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-		</div>
-		<div class="modal-body">
-			<p>この操作は元には戻せません。よろしいですか？</p>
-		</div>
-		<div class="modal-footer">
-			<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-			<button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="ModalSaveAllOk">保存</button>
-		</div>
-	</div>
-</div>
-</div>
-
-<main>
-	<!-- サイドバー -->
-	<div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-secondary" style="width: 280px;">
-		<span class="fs-4">テーブル一覧</span>
-		<hr class="mt-0 mb-2">
-		<ul class="nav nav-pills flex-column mb-auto">%s
-		</ul>
-	</div>
-	<!-- メインコンテンツ -->
-	<div class="w-100 vh-100">
-` 
-
-const HTML_FOOTER_CODE = 
-`
-	</div>
-	</div>
-</main>
-<footer>
-	Copyright &copy; kodaimurakami. 2023. 
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
-</body>
-</html>
-`
+*/
+//var JS_COMMON_CODE = ""
+//const JS_FORMAT =
+//`
+///* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/
+//const createTrNew = (elem) => {
+//	return %s
+//} 
+//
+///* <tr></tr>を作成 */
+//const createTr = (elem) => {
+//	return %s
+//} 
+//
+//
+///* セットアップ */
+//const setUp = () => {
+//	fetch('api/%s')
+//	.then(response => response.json())
+//	.then(data  => renderTbody(data))
+//	.then(() => {%s
+//	});
+//}
+//
+//
+///* 一括更新 */
+//const doPutAll = async () => {
+//	let successCount = 0;
+//	let errorCount = 0;
+//	%s
+//
+//	for (let i = 0; i < %s.length; i++) {
+//		if (%s) {
+//
+//			let requestBody = {%s
+//			}
+//
+//			await fetch('api/%s', {
+//				method: 'PUT',
+//				headers: {'Content-Type': 'application/json'},
+//				body: JSON.stringify(requestBody)
+//			})
+//			.then(response => {
+//				if (!response.ok){
+//					throw new Error(response.statusText);
+//				}
+//  				return response.json();
+//  			})
+//			.then(data => {%s
+//
+//				successCount += 1;
+//			}).catch(error => {
+//				errorCount += 1;				
+//			})
+//		}
+//	}
+//
+//	renderMessage('更新', successCount, true);
+//	renderMessage('更新', errorCount, false);
+//} 
+//
+//
+///* 新規登録 */
+//const doPost = () => {%s
+//
+//	if (%s)
+//	{
+//		let requestBody = {%s
+//		}
+//
+//		fetch('api/%s', {
+//			method: 'POST',
+//			headers: {'Content-Type': 'application/json'},
+//			body: JSON.stringify(requestBody)
+//		})
+//		.then(response => {
+//			if (!response.ok){
+//				throw new Error(response.statusText);
+//			}
+//  			return response.json();
+//  		})
+//		.then(data => {
+//			document.getElementById('new').remove();
+//
+//			let tmpElem = document.createElement('tbody');
+//			tmpElem.innerHTML = createTr(data);
+//			tmpElem.firstChild.addEventListener('change', changeAction);
+//			document.getElementById('records').appendChild(tmpElem.firstChild);
+//
+//			tmpElem = document.createElement('tbody');
+//			tmpElem.innerHTML = createTrNew();
+//			document.getElementById('records').appendChild(tmpElem.firstChild);
+//
+//			renderMessage('登録', 1, true);
+//		}).catch(error => {
+//			renderMessage('登録', 1, false);
+//		})
+//	}
+//}
+//
+//
+///* 一括削除 */
+//const doDeleteAll = async () => {
+//	let ls = getDeleteTarget();
+//	let successCount = 0;
+//	let errorCount = 0;
+//
+//	for (let x of ls) {
+//		await fetch('api/%s', {
+//			method: 'DELETE',
+//			headers: {'Content-Type': 'application/json'},
+//			body: x
+//		})
+//		.then(response => {
+//			if (!response.ok){
+//				throw new Error(response.statusText);
+//			}
+//			successCount += 1;
+//  		}).catch(error => {
+//			errorCount += 1;
+//		});
+//	}
+//
+//	setUp();
+//
+//	renderMessage('削除', successCount, true);
+//	renderMessage('削除', errorCount, false);
+//}
+//`
+//
+//func generateHtmlCode_h2(table *dto.Table) string {
+//	if table.TableNameJp != "" {
+//		return fmt.Sprintf("%s（%s）", table.TableName, table.TableNameJp)
+//	} else {
+//		return table.TableName
+//	}
+//}
+//
+//func generateHtmlCode_tr(table *dto.Table) string {
+//	code := ""
+//	for _, col := range table.Columns {
+//		if (col.IsNotNull || col.IsPrimaryKey) && (col.IsUpdAble || col.IsInsAble) {
+//			code += fmt.Sprintf("\n\t\t\t\t<th>%s<spnn style='color:red;'>*</spnn></th>", col.ColumnName)
+//		} else {
+//			code += fmt.Sprintf("\n\t\t\t\t<th>%s</th>", col.ColumnName)
+//		}
+//	}
+//	return code
+//}
+//
+//const HTML_FORMAT =
+//`
+//<h2 class="ps-2 my-2">%s</h2>
+//<hr class="mt-0 mb-2">
+//<div class="w-100 vh-100 px-3">
+//	<div id=message></div>
+//	<button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#ModalDeleteAll">削除</button>
+//	<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ModalSaveAll">保存</button>
+//	<button type="button" class="btn btn-secondary" id="reload">リロード</button>
+//	<div class="table-responsive mt-2" style="height:70%s">
+//	<table class="table table-hover table-bordered table-sm">
+//		<thead>
+//			<tr class="fixed-table-header bg-light">
+//				<th>削除</th>%s
+//			</tr>
+//		</thead>
+//		<tbody id="records">
+//		</tbody>
+//	</table>
+//	</div>
+//</div>
+//<script src="/static/js/%s.js"></script>
+//`
+//
+//func generateHtmlCodeHeader_ul(tables *[]dto.Table) string {
+//	code := ""
+//	for _, table := range *tables {
+//		tn := table.TableName
+//		code += fmt.Sprintf("\n\t\t\t<li class='nav-item'><a href='/mastertables/%s' class='nav-link text-white'>%s</a></li>", tn, tn)
+//	}
+//	return code
+//}
+//
+//const HTML_HEADER_FORMAT = 
+//`<!DOCTYPE html>
+//<html>
+//<head>
+//	<meta charset="utf-8">
+//	<meta name=”description“ content=““ />
+//	<meta name="viewport" content="width=device-width,initial-scale=1">
+//	<link rel="stylesheet" href="/static/css/style.css">
+//	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+//	<title>マスタメンテナンス</title>
+//</head>
+//<body>
+//
+//<!-- 削除確認モーダル -->
+//<div class="modal" tabindex="-1" id="ModalDeleteAll">
+//<div class="modal-dialog">
+//	<div class="modal-content">
+//		<div class="modal-header">
+//			<h4 class="modal-title">削除</h4>
+//			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+//		</div>
+//		<div class="modal-body">
+//			<p>この操作は元には戻せません。よろしいですか？</p>
+//		</div>
+//		<div class="modal-footer">
+//			<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+//			<button type="button" class="btn btn-danger" data-bs-dismiss="modal" id="ModalDeleteAllOk">削除</button>
+//		</div>
+//	</div>
+//</div>
+//</div>
+//
+//<!-- 保存確認モーダル -->
+//<div class="modal" tabindex="-1" id="ModalSaveAll">
+//<div class="modal-dialog">
+//	<div class="modal-content">
+//		<div class="modal-header">
+//			<h4 class="modal-title">保存</h4>
+//			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+//		</div>
+//		<div class="modal-body">
+//			<p>この操作は元には戻せません。よろしいですか？</p>
+//		</div>
+//		<div class="modal-footer">
+//			<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+//			<button type="button" class="btn btn-primary" data-bs-dismiss="modal" id="ModalSaveAllOk">保存</button>
+//		</div>
+//	</div>
+//</div>
+//</div>
+//
+//<main>
+//	<!-- サイドバー -->
+//	<div class="d-flex flex-column flex-shrink-0 p-3 text-white bg-secondary" style="width: 280px;">
+//		<span class="fs-4">テーブル一覧</span>
+//		<hr class="mt-0 mb-2">
+//		<ul class="nav nav-pills flex-column mb-auto">%s
+//		</ul>
+//	</div>
+//	<!-- メインコンテンツ -->
+//	<div class="w-100 vh-100">
+//` 
+//
+//const HTML_FOOTER_CODE = 
+//`
+//	</div>
+//	</div>
+//</main>
+//<footer>
+//	Copyright &copy; kodaimurakami. 2023. 
+//</footer>
+//
+//<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+//</body>
+//</html>
+//`
+//
