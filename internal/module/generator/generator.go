@@ -415,14 +415,19 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 }
 
 
-func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
-	bindVar := "?"
+func (gen *generator)getBindVar(dbDriver string, n int) string {
 	if gen.rdbms == "postgres" {
-		bindVar := fmt.Sprintf("$%d", n)
+		return fmt.Sprintf("$%d", n)
+	} else {
+		return "?"
 	}
+}
+
+
+func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
-		ls = append(ls, bindVar)
+		ls = append(ls, gen.getBindVar(i))
 	}
 	return strings.Join(ls, ",")
 }
@@ -586,6 +591,82 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 		binds,
 		aicnc, aicnc, aicnc, aicnc,
 	) 
+}
+
+func (gen *generator)isUpdateColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if c.Constraint.IsPrimaryKey {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+
+	return true
+}
+
+func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	query := fmt.Sprintf("\n\t`UPDATE %s\n\t SET ", tn) 
+	bindCount := 0
+	for _, c := range table.Columns {
+		if gen.isUpdateColumn(c) {
+			bindCount += 1
+			if bindCount == 1 {
+				query += fmt.Sprintf("%s = %s\n", c.Name, gen.getBindVar(bindCount))
+			} else {
+				query += fmt.Sprintf("\t\t,%s = %s\n", c.Name, gen.getBindVar(bindCount))
+			}
+		}	
+	}
+	query += "\t WHERE "
+	isFirst := true
+	for _, c := range gen.getPKColumns(table) {
+		bindCount += 1
+		if isFirst {
+			query += fmt.Sprintf("%s = %s", c.Name, gen.getBindVar(bindCount))
+			isFirst = false
+		} else {
+			query += fmt.Sprintf("\n\t   AND %s = %s", c.Name, gen.getBindVar(bindCount))
+		}
+	}
+	query += "`"
+
+	binds := "\n"
+	for _, c := range table.Columns {
+		if gen.isUpdateColumn(c) {
+			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
+		}
+	}
+	for _, c := range gen.getPKColumns(table) {
+		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
+	}
+	binds += "\t"
+
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT_UPDATE,
+		tnc, tni, tnp,
+		query,
+		binds,
+	) 
+}
+
+func (gen *generator)generateRepositoryDeleteCode(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnc := SnakeToCamel(tn)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
+
+	return fmt.Sprintf(REQPOSITORY_FORMAT_DELETE, tnc, tni, tnp, tni, tn) 
 }
 
 // service.go生成
