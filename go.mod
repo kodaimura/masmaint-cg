@@ -1,10 +1,13 @@
 module masmaint-cg
 
-go 1.18
+go 1.22
+
+toolchain go1.22.9
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/joho/godotenv v1.5.1
+	github.com/kodaimura/ddlparse v1.1.0
 	github.com/mattn/go-sqlite3 v1.14.17
 )
 

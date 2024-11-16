@@ -4,9 +4,12 @@ import (
 	"os"
 	"fmt"
 	"strings"
+	"time"
+	"os/exec"
 	"github.com/kodaimura/ddlparse"
 
 	"masmaint-cg/internal/core/logger"
+	"masmaint-cg/internal/core/utils"
 )
 
 
@@ -20,14 +23,36 @@ type Generator interface {
 	Generate() (string, error)
 }
 
-func NewGenerator([]ddlparse.Table, rdbms, path string) Generator {
+func NewGenerator(tables []ddlparse.Table, rdbms, path string) Generator {
 	return &generator{
 		tables, rdbms, path,
 	}
 }
 
+func (gen *generator) Generate() (string, error) {
+	path := gen.getSourcePath()
+	if err := gen.generateSource(); err != nil {
+		logger.Error(err.Error())
+		return "", err
+	}
+	zipPath := path + ".zip"
+	if err := exec.Command("zip", "-rm", zipPath, path).Run(); err != nil {
+		logger.Error(err.Error())
+		return "", err
+	}
+	return zipPath, nil
+}
+
+func (gen *generator) getSourcePath() string {
+	return fmt.Sprintf(
+		"./output/masmaint-%s-%s", 
+		time.Now().Format("2006-01-02-15-04-05"),
+		utils.RandomString(10),
+	) 
+}
+
 // Goソース生成
-func (gen *generator) Generate() error {
+func (gen *generator) generateSource() error {
 	if err := os.MkdirAll(gen.path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
@@ -36,12 +61,13 @@ func (gen *generator) Generate() error {
 	if err := gen.copyTemplate(); err != nil {
 		return err
 	}
-	if err := gen.generateModule(); err != nil {
+	if err := gen.generateModules(); err != nil {
 		return err
 	}
+	/*
 	if err := gen.generateWeb(); err != nil {
 		return err
-	}
+	}*/
 
 	return nil	
 }
@@ -66,7 +92,7 @@ func (gen *generator) generateModules() error {
 		return err
 	}
 
-	for table := range gen.tables {
+	for _, table := range gen.tables {
 		if err := gen.generateModule(path, table); err != nil {
 			logger.Error(err.Error())
 			return err
@@ -83,7 +109,7 @@ func (gen *generator) generateModule(path string, table ddlparse.Table) error {
 		logger.Error(err.Error())
 		return err
 	}
-	return gen.generateModuleFiles(path)
+	return gen.generateModuleFiles(path, table)
 }
 
 // module/:table_name内のファイル生成
@@ -107,8 +133,8 @@ func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) err
 }
 
 // controller.go生成
-func (gen *generator) generateControllerFile(table ddlparse.Table, path string) error {
-	code := codeController(table)
+func (gen *generator) generateControllerFile(path string, table ddlparse.Table) error {
+	code := gen.codeController(table)
 	err := WriteFile(fmt.Sprintf("%scontroller.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -126,8 +152,8 @@ func (gen *generator) codeController(table ddlparse.Table) string {
 }
 
 // model.go生成
-func (gen *generator) generateModelFile(table ddlparse.Table, path string) error {
-	code := codeModel(table)
+func (gen *generator) generateModelFile(path string, table ddlparse.Table) error {
+	code := gen.codeModel(table)
 	err := WriteFile(fmt.Sprintf("%smodel.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -206,8 +232,8 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 }
 
 // request.go生成
-func (gen *generator) generateRequestFile(table ddlparse.Table, path string) error {
-	code := codeRequest(table)
+func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
+	code := gen.codeRequest(table)
 	err := WriteFile(fmt.Sprintf("%srequest.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -224,12 +250,10 @@ func (gen *generator)codeRequest(table ddlparse.Table) string {
 		gen.codeRequestPutBodyFields(table),
 		gen.codeRequestDeleteBodyFields(table),
 	)
-	return code
 }
 
 func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnp := SnakeToPascal(tn)
 	
 	code := ""
 	for _, column := range table.Columns {
@@ -253,12 +277,11 @@ func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 // request.go コード
 func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnp := SnakeToPascal(tn)
 	
 	code := ""
 	for _, column := range table.Columns {
-		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-			return false
+		if strings.Contains(column.Name, "_at") || strings.Contains(column.Name, "_AT") {
+			continue
 		}
 		cn := strings.ToLower(column.Name)
 		code += "\t" + gen.getFieldName(cn ,tn) + " ";
@@ -285,8 +308,8 @@ func (gen *generator)getPKColumns(table ddlparse.Table) []ddlparse.Column {
 	names := []string{}
 	ret := []ddlparse.Column{}
 	for _, c := range table.Columns {
-		if c.Constraint.IsPrimaryKey || contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
-			if !contains(names, c.Name) {
+		if c.Constraint.IsPrimaryKey || Contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
+			if !Contains(names, c.Name) {
 				names = append(names, c.Name)
 				ret = append(ret, c)
 			}
@@ -296,10 +319,11 @@ func (gen *generator)getPKColumns(table ddlparse.Table) []ddlparse.Column {
 }
 
 func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
 	code := ""
 	for _, column := range gen.getPKColumns(table) {
 		cn := strings.ToLower(column.Name)
-		code += "\t" + gen.getFieldName(cn ,tn) + " ";
+		code += "\t" + gen.getFieldName(cn , tn) + " ";
 		if gen.isNullColumn(column, table.Constraints) {
 			code += "*"
 		}
@@ -312,8 +336,8 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
-func (gen *generator)generateRepositoryFile(table ddlparse.Table, path string) error {
-	code := codeRepository(table)
+func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
+	code := gen.codeRepository(table)
 	err := WriteFile(fmt.Sprintf("%srepository.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -415,7 +439,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 }
 
 
-func (gen *generator)getBindVar(dbDriver string, n int) string {
+func (gen *generator)getBindVar(n int) string {
 	if gen.rdbms == "postgres" {
 		return fmt.Sprintf("$%d", n)
 	} else {
@@ -433,7 +457,7 @@ func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
 }
 
 
-func (gen *generator)gen.isInsertColumn(c ddlparse.Column) bool {
+func (gen *generator)isInsertColumn(c ddlparse.Column) bool {
 	if c.Constraint.IsAutoincrement {
 		return false
 	}
@@ -464,7 +488,7 @@ func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Colu
 func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 	_, found := gen.getAutoIncrementColumn(table)
 	if found {
-		if cf.DBDriver == "mysql" {
+		if gen.rdbms == "mysql" {
 			return gen.codeRepositoryInsertAIMySQL(table)
 		} else {
 			return gen.codeRepositoryInsertNomal(table)
@@ -544,7 +568,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		TEMPLATE_INSERT_AI,
+		REQPOSITORY_FORMAT_INSERT_AI,
 		tnc, tni, tnp,
 		query,
 		binds,
@@ -585,7 +609,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		TEMPLATE_INSERT_AI_MYSQL,
+		REQPOSITORY_FORMAT_INSERT_AI_MYSQL,
 		tnc, tni, tnp,
 		query,
 		binds,
@@ -660,7 +684,7 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	) 
 }
 
-func (gen *generator)generateRepositoryDeleteCode(table ddlparse.Table) string {
+func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
@@ -670,8 +694,8 @@ func (gen *generator)generateRepositoryDeleteCode(table ddlparse.Table) string {
 }
 
 // service.go生成
-func (gen *generator) generateServiceFile(table ddlparse.Table, path string) error {
-	code := codeService(table)
+func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
+	code := gen.codeService(table)
 	err := WriteFile(fmt.Sprintf("%sservice.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
@@ -708,7 +732,7 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 		if i != 0 {
 			fields += ", "
 		} 
-		fn := gen.getFieldName(c.Name ,tn)
+		fn := gen.getFieldName(column.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
@@ -742,7 +766,7 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 		if i != 0 {
 			fields += ", "
 		} 
-		fn := gen.getFieldName(c.Name ,tn)
+		fn := gen.getFieldName(column.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 

@@ -1,4 +1,4 @@
-package module
+package generator
 
 import (
 	"io"
@@ -132,4 +132,13 @@ func GetSnakeInitial(snake string) string {
 		ret += s[0:1]
 	}
 	return ret
+}
+
+func Contains(slice []string, element string) bool {
+    for _, v := range slice {
+        if v == element {
+            return true
+        }
+    }
+    return false
 }
