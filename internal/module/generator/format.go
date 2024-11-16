@@ -255,10 +255,10 @@ const REQPOSITORY_FORMAT_UPDATE =
 
 	var err error
 	if tx != nil {
-        _, err = tx.Exec(cmd, binds...)
-    } else {
-        _, err = rep.db.Exec(cmd, binds...)
-    }
+		_, err = tx.Exec(cmd, binds...)
+	} else {
+		_, err = rep.db.Exec(cmd, binds...)
+	}
 
 	return err
 }`
@@ -270,10 +270,10 @@ const REQPOSITORY_FORMAT_DELETE =
 
 	var err error
 	if tx != nil {
-        _, err = tx.Exec(cmd, binds...)
-    } else {
-        _, err = rep.db.Exec(cmd, binds...)
-    }
+		_, err = tx.Exec(cmd, binds...)
+	} else {
+		_, err = rep.db.Exec(cmd, binds...)
+	}
 
 	return err
 }`
@@ -372,4 +372,128 @@ const SERVICE_FORMAT_UPDATE =
 	}
 
 	return srv.repository.GetOne(&%s{ %s })
+}`
+
+var JS_FORMAT = ReadFile("_template/js_format.txt")
+
+const JS_FORMAT_CREATETRNEW =
+`const createTrNew = (elem) => {
+	const tr = document.createElement('tr');
+	tr.id = 'new';
+	tr.innerHTML = `+"%s"+`;"
+	return tr;
+}`
+
+const JS_FORMAT_CREATETR =
+`const createTr = (elem) => {
+	const tr = document.createElement('tr');
+	tr.innerHTML = `+"%s"+`;"
+	return tr;
+}`
+
+const JS_FORMAT_GETROWS =
+`const getRows = async () => {
+	document.getElementById('records').innerHTML = '';
+	const rows = await api.get('%s');
+	renderTbody(rows);
+%s
+}`
+
+const JS_FORMAT_PUTROWS =
+`const putRows = async () => {
+	let successCount = 0;
+	let errorCount = 0;
+
+%s
+
+%s
+
+	for (let i = 0; i < code.length; i++) {
+		const rowMap = {
+%s
+		}
+
+		const rowBkMap = {
+%s
+		}
+
+		//差分がある行のみ更新
+		if (Object.keys(rowMap).some(key => rowMap[key].value !== rowBkMap[key].value)) {
+		const requestBody = {
+%s
+		}
+
+			try {
+				const data = await api.put('%s', requestBody);
+
+%s
+
+				Object.values(rowMap).forEach(element => {
+					element.classList.remove('changed');
+					element.classList.remove('error');
+				});
+
+				successCount += 1;
+			} catch (e) {
+				Object.keys(rowMap).forEach(key => {
+					rowMap[key].classList.toggle('error', key === e.details.field);
+				});
+				errorCount += 1;
+			}
+		}
+	}
+
+	renderMessage('更新', successCount, true);
+	renderMessage('更新', errorCount, false);
+}`
+
+const JS_FORMAT_POSTROW =
+`const postRow = async () => {
+	const rowMap = {
+%s
+	}
+
+	if (Object.keys(rowMap).some(key => rowMap[key].value !== '')) {
+		const requestBody = {
+%s
+		}
+
+		try {
+			const data = await api.post('%s', requestBody);
+
+			document.getElementById('new').remove();
+			const tr = createTr(data);
+			tr.addEventListener('change', handleChange);
+			document.getElementById('records').appendChild(tr);
+			document.getElementById('records').appendChild(createTrNew());
+
+			renderMessage('登録', 1, true);
+		} catch (e) {
+			Object.keys(rowMap).forEach(key => {
+				rowMap[key].classList.toggle('error', key === e.details.field || `+"%s.${key}"+` === e.details.column);
+			});
+			renderMessage('登録', 1, false);
+		}
+	}
+}`
+
+const JS_FORMAT_DELETEROWS =
+`const deleteRows = async () => {
+	const rows = getDeleteTargetRows();
+	let successCount = 0;
+	let errorCount = 0;
+
+	for (let row of rows) {
+		try {
+			await api.delete('%s', row);
+			successCount += 1;
+		} catch (e) {
+			errorCount += 1;
+		}
+	}
+
+	getRows();
+
+	renderMessage('削除', successCount, true);
+	renderMessage('削除', errorCount, false);
 }`

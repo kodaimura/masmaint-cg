@@ -1,0 +1,111 @@
+import { api } from '/js/api.js';
+import { parseFloatOrReturnOriginal, parseIntOrReturnOriginal } from './script.js';
+
+/* 初期設定 */
+window.addEventListener('DOMContentLoaded', (event) => {
+    getRows();
+});
+
+/* リロードボタン押下 */
+document.getElementById('reload').addEventListener('click', (event) => {
+    clearMessage();
+    getRows();
+})
+
+/* 保存モーダル確定押下 */
+document.getElementById('modal-save-ok').addEventListener('click', (event) => {
+    clearMessage();
+    putRows();
+    postRow();
+})
+
+/* 削除モーダル確定押下 */
+document.getElementById('modal-delete-dk').addEventListener('click', (event) => {
+    clearMessage();
+    deleteRows();
+})
+
+/* チェックボックスの選択一覧取得 */
+const getDeleteTargetRows = () => {
+    const elems = document.getElementsByName('del');
+    let ret = [];
+
+    for (let elem of elems) {
+        if (elem.checked) {
+            ret.push(JSON.parse(elem.value));
+        }
+    }
+    return ret
+}
+
+const renderMessage = (msg, count, isSuccess) => {
+    if (count !== 0) {
+        const message = document.createElement('div');
+        message.textContent = `${count}件の${msg}に${isSuccess ? '成功' : '失敗'}しました。`
+        message.className = `alert alert-${isSuccess ? 'success' : 'danger'} alert-custom my-1`;
+        document.getElementById('message').appendChild(message);
+    }
+}
+
+const clearMessage = () => {
+    document.getElementById('message').innerHTML = '';
+}
+
+const nullToEmpty = (s) => {
+    return (s == null) ? '' : s;
+}
+
+/* changeイベントハンドラ */
+const handleChange = (event) => {
+    const target = event.target;
+    const target_bk = target.nextElementSibling;
+
+    if (target_bk == null) return
+
+    if (target.value !== target_bk.value) {
+        target.classList.add('changed');
+    } else {
+        target.classList.remove('changed');
+    }
+}
+
+/* <tbody></tbody>内のレコードにチェンジアクション追加 */
+const addChangeEvent = (columnName) => {
+    const elems = document.getElementsByName(columnName);
+    for (const elem of elems) {
+        elem.addEventListener('change', handleChange);
+    }
+}
+
+/* <tbody></tbody>レンダリング */
+const renderTbody = (data) => {
+    const tbody = document.getElementById('records');
+    if (data != null) {
+        for (const elem of data) {
+            tbody.appendChild(createTr(elem));
+        }
+    }
+    tbody.appendChild(createTrNew());
+}
+
+/* <tr></tr>を作成 （tbody末尾の新規登録用レコード）*/
+%s
+
+/* <tr></tr>を作成 */
+%s
+
+
+/* セットアップ */
+%s
+
+
+/* 一括更新 */
+%s
+
+
+/* 新規登録 */
+%s
+
+
+/* 一括削除 */
+%s
