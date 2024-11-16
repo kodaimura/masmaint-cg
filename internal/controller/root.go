@@ -64,12 +64,12 @@ func (ctr *RootController) postGenerate(c *gin.Context) {
 		return
 	}
 	gen := generator.NewGenerator(tables, rdbms)
-	zipPath, err := gen.Generate()
+	zip, err := gen.Generate()
 
 	if err != nil {
 		c.JSON(500, gin.H{"errors":[]string{"生成に失敗しました。"}})
 		return
 	}
 	 
-	c.JSON(200, gin.H{"path": zipPath})
+	c.JSON(200, gin.H{"zip": zip})
 }

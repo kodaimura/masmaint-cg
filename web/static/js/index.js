@@ -23,7 +23,7 @@ document.getElementById('generate').addEventListener('click', () => {
 		return response.json()
 		.then(data => {
 			if (response.ok) {
-				download(data.path)
+				download(data.zip)
 			} else {
 				handleErrors(data.errors)
 			}
@@ -32,13 +32,13 @@ document.getElementById('generate').addEventListener('click', () => {
 	.catch(console.error);
 });
 
-const download = (path) => {
+const download = (zip) => {
 	let alink = document.createElement('a');
-	alink.download = path.split('/').pop();
-	alink.href = path;
+	alink.download = zip;
+	alink.href = `output/${zip}`;
 	alink.click();
 	document.getElementById('ddl').value = ''
-	renderMessage(`${path.substring(2).replace('/', '_')} がダウンロードされました。`, true);
+	renderMessage(`${path} がダウンロードされました。`, true);
 }
 
 const handleErrors = (errors) => {

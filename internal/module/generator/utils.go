@@ -15,11 +15,9 @@ func WriteFile(path, content string) error {
 	defer f.Close()
 
 	if err != nil {
-		logger.Error(err.Error())
 		return err
 	}
 	if _, err = f.WriteString(content); err != nil {
-		logger.Error(err.Error())
 		return err
 	}
 	return nil

@@ -27,42 +27,67 @@ func NewGenerator(tables []ddlparse.Table, rdbms string) Generator {
 	return &generator{
 		tables: tables, 
 		rdbms: rdbms,
-		output: getOutputPath(),
+		output: "./output",
 	}
-}
-
-func getOutputPath() string {
-	return fmt.Sprintf(
-		"./output/%s-%s", 
-		time.Now().Format("2006-01-02-15-04-05"),
-		utils.RandomString(10),
-	) 
 }
 
 func (gen *generator) Generate() (string, error) {
-	if err := gen.generateSource(); err != nil {
+	dir, path, err := gen.createWorkDir()
+	if err != nil {
+		return "", err
+	}
+	if err := gen.generateSource(path); err != nil {
+		return "", err
+	}
+	return gen.zipWorkDir(dir)
+}
+
+func (gen *generator) createWorkDir() (string, string, error) {
+	dir := fmt.Sprintf(
+		"%s-%s", 
+		time.Now().Format("2006-01-02-15-04-05"), 
+		utils.RandomString(10),
+	)
+	path := fmt.Sprintf("%s/%s", gen.output, dir)
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.Error(err.Error())
+		return "", "", err
+	}
+	return dir, path, nil
+}
+
+func (gen *generator) zipWorkDir(dir string) (string, error) {
+	current, err := os.Getwd()
+	if err != nil {
 		logger.Error(err.Error())
 		return "", err
 	}
-	zipPath := gen.output + ".zip"
-	if err := exec.Command("zip", "-rm", zipPath, gen.output).Run(); err != nil {
+	defer os.Chdir(current)
+
+	if err := os.Chdir(gen.output); err != nil {
 		logger.Error(err.Error())
 		return "", err
 	}
-	return zipPath, nil
+
+	zip := fmt.Sprintf("%s.zip", dir)
+	if err := exec.Command("zip", "-rm", zip, dir).Run(); err != nil {
+		logger.Error(err.Error())
+		return "", err
+	}
+	return zip, nil
 }
 
 // Goソース生成
-func (gen *generator) generateSource() error {
-	if err := os.MkdirAll(gen.output, 0777); err != nil {
+func (gen *generator) generateSource(path string) error {
+	path = fmt.Sprintf("%s/masmaint", path)
+	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
-
-	if err := gen.copyTemplate(); err != nil {
+	if err := gen.copyTemplate(path); err != nil {
 		return err
 	}
-	if err := gen.generateModules(); err != nil {
+	if err := gen.generateInternal(path); err != nil {
 		return err
 	}
 	/*
@@ -74,27 +99,42 @@ func (gen *generator) generateSource() error {
 }
 
 // templateコピー
-func (gen *generator) copyTemplate() error {
-	origin := "_template"
+func (gen *generator) copyTemplate(path string) error {
+	origin := "_template/masmaint"
 
-	err := CopyDir(origin, gen.output)
-	if err != nil {
+	if err := CopyDir(origin, path); err != nil {
 		logger.Error(err.Error())
+		return err
 	}
-	return err
+	return nil
 }
 
-// module生成
-func (gen *generator) generateModules() error {
-	path := fmt.Sprintf("%s/masmaint/internal/module", gen.output)
+// internal生成
+func (gen *generator) generateInternal(path string) error {
+	path = fmt.Sprintf("%s/internal", path)
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
+	if err := gen.generateModule(path); err != nil {
+		return err
+	}
+	return nil
+}
 
+// module生成
+func (gen *generator) generateModule(path string) error {
+	path = fmt.Sprintf("%s/module", path)
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return gen.generateModulesPerTable(path)
+}
+
+func (gen *generator) generateModulesPerTable(path string) error {
 	for _, table := range gen.tables {
-		if err := gen.generateModule(path, table); err != nil {
-			logger.Error(err.Error())
+		if err := gen.generateTableModule(path, table); err != nil {
 			return err
 		}
 	}
@@ -102,17 +142,18 @@ func (gen *generator) generateModules() error {
 }
 
 // module/:table_name生成
-func (gen *generator) generateModule(path string, table ddlparse.Table) error {
-	path = fmt.Sprintf("%s/%s", path, strings.ToLower(table.Name))
+func (gen *generator) generateTableModule(path string, table ddlparse.Table) error {
+	tn := strings.ToLower(table.Name)
+	path = fmt.Sprintf("%s/%s", path, tn)
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
-	return gen.generateModuleFiles(path, table)
+	return gen.generateTableModuleFiles(path, table)
 }
 
 // module/:table_name内のファイル生成
-func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) error {
+func (gen *generator) generateTableModuleFiles(path string, table ddlparse.Table) error {
 	if err := gen.generateControllerFile(path, table); err != nil {
 		return err
 	}
@@ -133,12 +174,57 @@ func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) err
 
 // controller.go生成
 func (gen *generator) generateControllerFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/controller.go", path)
 	code := gen.codeController(table)
-	err := WriteFile(fmt.Sprintf("%s/controller.go", path), code)
-	if err != nil {
+	if err := WriteFile(path, code); err != nil {
 		logger.Error(err.Error())
+		return err
 	}
-	return err
+	return nil
+}
+
+// model.go生成
+func (gen *generator) generateModelFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/model.go", path)
+	code := gen.codeModel(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// request.go生成
+func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/request.go", path)
+	code := gen.codeRequest(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// repository.go
+func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/repository.go", path)
+	code := gen.codeRepository(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// service.go生成
+func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/service.go", path)
+	code := gen.codeService(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // controller.go コード生成
@@ -148,16 +234,6 @@ func (gen *generator) codeController(table ddlparse.Table) string {
 		CONTROLLER_FORMAT, 
 		tn, tn, tn, tn, tn, tn, tn,
 	)
-}
-
-// model.go生成
-func (gen *generator) generateModelFile(path string, table ddlparse.Table) error {
-	code := gen.codeModel(table)
-	err := WriteFile(fmt.Sprintf("%s/model.go", path), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
 }
 
 func (gen *generator) dataTypeToGoType(dataType string) string {
@@ -230,15 +306,6 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 	)
 }
 
-// request.go生成
-func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
-	code := gen.codeRequest(table)
-	err := WriteFile(fmt.Sprintf("%s/request.go", path), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
-}
 
 // request.go コード
 func (gen *generator)codeRequest(table ddlparse.Table) string {
@@ -334,15 +401,6 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 		}
 	}
 	return strings.TrimSuffix(code, "\n")
-}
-
-func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
-	code := gen.codeRepository(table)
-	err := WriteFile(fmt.Sprintf("%s/repository.go", path), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
 }
 
 func (gen *generator)codeRepository(table ddlparse.Table) string {
@@ -691,16 +749,6 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(REQPOSITORY_FORMAT_DELETE, tnc, tni, tnp, tni, tn) 
-}
-
-// service.go生成
-func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
-	code := gen.codeService(table)
-	err := WriteFile(fmt.Sprintf("%s/service.go", path), code)
-	if err != nil {
-		logger.Error(err.Error())
-	}
-	return err
 }
 
 func (gen *generator) codeService(table ddlparse.Table) string {
