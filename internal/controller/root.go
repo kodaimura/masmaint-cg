@@ -25,7 +25,7 @@ func (ctr *RootController) indexPage(c *gin.Context) {
 //POST /generate
 func (ctr *RootController) postGenerate(c *gin.Context) {
 	ddlFile, err := c.FormFile("ddl")
-	lang := c.PostForm("lang")
+	//lang := c.PostForm("lang")
 	rdbms := c.PostForm("rdbms")
 
 	if err != nil {
@@ -63,7 +63,7 @@ func (ctr *RootController) postGenerate(c *gin.Context) {
 		c.JSON(400, gin.H{"errors": []string{err.Error()}})
 		return
 	}
-	gen := generator.NewGenerator(tables, lang, rdbms)
+	gen := generator.NewGenerator(tables, rdbms)
 	zipPath, err := gen.Generate()
 
 	if err != nil {

@@ -16,44 +16,45 @@ import (
 type generator struct {
 	tables []ddlparse.Table
 	rdbms string
-	path string
+	output string
 }
 
 type Generator interface {
 	Generate() (string, error)
 }
 
-func NewGenerator(tables []ddlparse.Table, rdbms, path string) Generator {
+func NewGenerator(tables []ddlparse.Table, rdbms string) Generator {
 	return &generator{
-		tables, rdbms, path,
+		tables: tables, 
+		rdbms: rdbms,
+		output: getOutputPath(),
 	}
 }
 
+func getOutputPath() string {
+	return fmt.Sprintf(
+		"./output/%s-%s", 
+		time.Now().Format("2006-01-02-15-04-05"),
+		utils.RandomString(10),
+	) 
+}
+
 func (gen *generator) Generate() (string, error) {
-	path := gen.getSourcePath()
 	if err := gen.generateSource(); err != nil {
 		logger.Error(err.Error())
 		return "", err
 	}
-	zipPath := path + ".zip"
-	if err := exec.Command("zip", "-rm", zipPath, path).Run(); err != nil {
+	zipPath := gen.output + ".zip"
+	if err := exec.Command("zip", "-rm", zipPath, gen.output).Run(); err != nil {
 		logger.Error(err.Error())
 		return "", err
 	}
 	return zipPath, nil
 }
 
-func (gen *generator) getSourcePath() string {
-	return fmt.Sprintf(
-		"./output/masmaint-%s-%s", 
-		time.Now().Format("2006-01-02-15-04-05"),
-		utils.RandomString(10),
-	) 
-}
-
 // Goソース生成
 func (gen *generator) generateSource() error {
-	if err := os.MkdirAll(gen.path, 0777); err != nil {
+	if err := os.MkdirAll(gen.output, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -74,10 +75,9 @@ func (gen *generator) generateSource() error {
 
 // templateコピー
 func (gen *generator) copyTemplate() error {
-	source := "_template/masmaint"
-	destination := gen.path
+	origin := "_template"
 
-	err := CopyDir(source, destination)
+	err := CopyDir(origin, gen.output)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -86,7 +86,7 @@ func (gen *generator) copyTemplate() error {
 
 // module生成
 func (gen *generator) generateModules() error {
-	path := gen.path + "_template/masmaint/internal/module/"
+	path := fmt.Sprintf("%s/masmaint/internal/module", gen.output)
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
@@ -103,8 +103,7 @@ func (gen *generator) generateModules() error {
 
 // module/:table_name生成
 func (gen *generator) generateModule(path string, table ddlparse.Table) error {
-	pkg := strings.ToLower(table.Name)
-	path = path + pkg
+	path = fmt.Sprintf("%s/%s", path, strings.ToLower(table.Name))
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
 		return err
@@ -135,7 +134,7 @@ func (gen *generator) generateModuleFiles(path string, table ddlparse.Table) err
 // controller.go生成
 func (gen *generator) generateControllerFile(path string, table ddlparse.Table) error {
 	code := gen.codeController(table)
-	err := WriteFile(fmt.Sprintf("%scontroller.go", path), code)
+	err := WriteFile(fmt.Sprintf("%s/controller.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -154,7 +153,7 @@ func (gen *generator) codeController(table ddlparse.Table) string {
 // model.go生成
 func (gen *generator) generateModelFile(path string, table ddlparse.Table) error {
 	code := gen.codeModel(table)
-	err := WriteFile(fmt.Sprintf("%smodel.go", path), code)
+	err := WriteFile(fmt.Sprintf("%s/model.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -234,7 +233,7 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 // request.go生成
 func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
 	code := gen.codeRequest(table)
-	err := WriteFile(fmt.Sprintf("%srequest.go", path), code)
+	err := WriteFile(fmt.Sprintf("%s/request.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -291,8 +290,9 @@ func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 		code += gen.dataTypeToGoType(column.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
 		if gen.isNullColumn(column, table.Constraints) {
-			code += " binding:\"required\"`\n"
+			code += " binding:\"required\"`"
 		}
+		code += "\n"
 	}
 	return strings.TrimSuffix(code, "\n")
 }
@@ -338,7 +338,7 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 
 func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
 	code := gen.codeRepository(table)
-	err := WriteFile(fmt.Sprintf("%srepository.go", path), code)
+	err := WriteFile(fmt.Sprintf("%s/repository.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -696,7 +696,7 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 // service.go生成
 func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
 	code := gen.codeService(table)
-	err := WriteFile(fmt.Sprintf("%sservice.go", path), code)
+	err := WriteFile(fmt.Sprintf("%s/service.go", path), code)
 	if err != nil {
 		logger.Error(err.Error())
 	}
@@ -790,14 +790,14 @@ func (gen *generator) generateStatic() error {
 
 // css生成
 func (gen *generator) generateCss() error {
-	//path := gen.path + "public/static/css/"
+	//path := gen.output + "public/static/css/"
 	// _originalcopy_からコピー
 	return nil
 }
 
 // js生成
 func (gen *generator) generateJs() error {
-	path := gen.path + "web/static/js/"
+	path := gen.output + "web/static/js/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())
@@ -821,7 +821,7 @@ func (gen *generator) generateJsFiles(path string) error {
 
 // template生成
 func (gen *generator) generateTemplate() error {
-	path := gen.path + "web/template/"
+	path := gen.output + "web/template/"
 
 	if err := os.MkdirAll(path, 0777); err != nil {
 		logger.Error(err.Error())

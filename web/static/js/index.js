@@ -11,7 +11,7 @@ document.getElementById('generate').addEventListener('click', () => {
 	}
 
 	const formData = new FormData();
-	formData.append('file', ddl);
+	formData.append('ddl', ddl);
 	formData.append('lang', lang);
 	formData.append('rdbms', rdbms);
 
@@ -34,7 +34,7 @@ document.getElementById('generate').addEventListener('click', () => {
 
 const download = (path) => {
 	let alink = document.createElement('a');
-	alink.download = path.substring(2);
+	alink.download = path.split('/').pop();
 	alink.href = path;
 	alink.click();
 	document.getElementById('ddl').value = ''
