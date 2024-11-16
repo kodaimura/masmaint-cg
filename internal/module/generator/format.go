@@ -380,14 +380,14 @@ const JS_FORMAT_CREATETRNEW =
 `const createTrNew = (elem) => {
 	const tr = document.createElement('tr');
 	tr.id = 'new';
-	tr.innerHTML = `+"%s"+`;"
+	tr.innerHTML = `+"`%s`"+`;
 	return tr;
 }`
 
 const JS_FORMAT_CREATETR =
 `const createTr = (elem) => {
 	const tr = document.createElement('tr');
-	tr.innerHTML = `+"%s"+`;"
+	tr.innerHTML = `+"`%s`"+`;
 	return tr;
 }`
 
@@ -419,9 +419,9 @@ const JS_FORMAT_PUTROWS =
 
 		//差分がある行のみ更新
 		if (Object.keys(rowMap).some(key => rowMap[key].value !== rowBkMap[key].value)) {
-		const requestBody = {
+			const requestBody = {
 %s
-		}
+			}
 
 			try {
 				const data = await api.put('%s', requestBody);

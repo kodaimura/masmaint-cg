@@ -914,20 +914,19 @@ func (gen *generator) codeJs(table ddlparse.Table) string {
 }
 
 func (gen *generator) codeJsCreateTrNew(table ddlparse.Table) string {
-	s1 := "\t\t<td></td>"
+	s1 := "\n\t\t<td></td>"
 	for _, c := range table.Columns {
-		cn := strings.ToLower(c.Name)
 		if gen.isInsertColumn(c) {
-			s1 += fmt.Sprintf("\n\t\t<td><input type='text' id='%s_new'></td>", cn)
+			s1 += fmt.Sprintf("\n\t\t<td><input type='text' id='%s_new'></td>", strings.ToLower(c.Name))
 		} else {
-			s1 += fmt.Sprintf("\n\t\t<td><input type='text' disabled></td>", cn)
+			s1 += "\n\t\t<td><input type='text' disabled></td>"
 		}
 	}
 	return fmt.Sprintf(JS_FORMAT_CREATETRNEW, s1)
 }
 
 func (gen *generator) codeJsCreateTr(table ddlparse.Table) string {
-	s1 := "\t\t<td><input class='form-check-input' type='checkbox' name='del' value='${JSON.stringify(elem)}'></td>"
+	s1 := "\n\t\t<td><input class='form-check-input' type='checkbox' name='del' value='${JSON.stringify(elem)}'></td>"
 	for _, c := range table.Columns {
 		cn := strings.ToLower(c.Name)
 		if gen.isUpdateColumn(c) {
@@ -948,13 +947,11 @@ func (gen *generator) codeJsCreateTr(table ddlparse.Table) string {
 func (gen *generator) codeJsGetRows(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	s1 := ""
-	for i, c := range gen.getUpdateColumns(table) {
+	for _, c := range gen.getUpdateColumns(table) {
 		cn := strings.ToLower(c.Name)
-		if i > 0 {
-			s1 += "\n"
-		}
-		s1 += fmt.Sprintf("\taddChangeEvent('%s');", cn)
+		s1 += fmt.Sprintf("\taddChangeEvent('%s');\n", cn)
 	}
+	s1 = strings.TrimSuffix(s1, "\n")
 	return fmt.Sprintf(JS_FORMAT_GETROWS, tn, s1)
 }
 
@@ -966,46 +963,53 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 		cn := strings.ToLower(c.Name)
 		s1 += fmt.Sprintf("\tconst %s = document.getElementsByName('%s');\n", cn, cn)
 	}
+	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
 	for _, c := range updColumns {
 		cn := strings.ToLower(c.Name)
 		s2 += fmt.Sprintf("\tconst %s_bk = document.getElementsByName('%s_bk');\n", cn, cn)
 	}
+	s2 = strings.TrimSuffix(s2, "\n")
 	s3 := ""
 	for _, c := range updColumns {
 		cn := strings.ToLower(c.Name)
-		s3 += fmt.Sprintf("\t\t'%s': %s[i],\n", cn, cn)
+		s3 += fmt.Sprintf("\t\t\t'%s': %s[i],\n", cn, cn)
 	}
+	s3 = strings.TrimSuffix(s3, "\n")
 	s4 := ""
 	for _, c := range updColumns {
 		cn := strings.ToLower(c.Name)
-		s4 += fmt.Sprintf("\t\t'%s': %s_bk[i],\n", cn, cn)
+		s4 += fmt.Sprintf("\t\t\t'%s': %s_bk[i],\n", cn, cn)
 	}
+	s4 = strings.TrimSuffix(s4, "\n")
 	s5 := ""
 	for _, c := range table.Columns {
+		if 
 		cn := strings.ToLower(c.Name)
 		ctype := gen.dataTypeToGoType(c.DataType.Name)
 		if ctype == "int" {
-			s5 += fmt.Sprintf("\t\t\t%s: parseIntOrReturnOriginal(%s[i].value),\n", cn, cn)
+			s5 += fmt.Sprintf("\t\t\t\t%s: parseIntOrReturnOriginal(%s[i].value),\n", cn, cn)
 		} else if ctype == "float64" {
-			s5 += fmt.Sprintf("\t\t\t%s: parseFloatOrReturnOriginal(%s[i].value),\n", cn, cn)
+			s5 += fmt.Sprintf("\t\t\t\t%s: parseFloatOrReturnOriginal(%s[i].value),\n", cn, cn)
 		} else {
-			s5 += fmt.Sprintf("\t\t\t%s: %s[i].value,\n", cn, cn)
+			s5 += fmt.Sprintf("\t\t\t\t%s: %s[i].value,\n", cn, cn)
 		}
 	}
+	s5 = strings.TrimSuffix(s5, "\n")
 	s6 := ""
 	for _, c := range table.Columns {
 		cn := strings.ToLower(c.Name)
-		s6 += fmt.Sprintf("\t\t\t%s[i].value = data.%s;\n", cn, cn)
+		s6 += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
 	}
 	for _, c := range updColumns {
 		cn := strings.ToLower(c.Name)
-		s6 += fmt.Sprintf("\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
+		s6 += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
 	}
+	s6 = strings.TrimSuffix(s6, "\n")
 
 	return fmt.Sprintf(
 		JS_FORMAT_PUTROWS, 
-		tn, s1, s2, s3, s4, s5, s6,
+		s1, s2, s3, s4, s5, tn, s6,
 	)
 }
 
@@ -1017,6 +1021,7 @@ func (gen *generator) codeJsPostRow(table ddlparse.Table) string {
 		cn := strings.ToLower(c.Name)
 		s1 += fmt.Sprintf("\t\t'%s': document.getElementById('%s_new'),\n", cn, cn)
 	}
+	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
 	for _, c := range insColumns{
 		cn := strings.ToLower(c.Name)
@@ -1029,6 +1034,7 @@ func (gen *generator) codeJsPostRow(table ddlparse.Table) string {
 			s2 += fmt.Sprintf("\t\t\t%s: rowMap.%s.value,\n", cn, cn)
 		}
 	}
+	s2 = strings.TrimSuffix(s2, "\n")
 
 	return fmt.Sprintf(
 		JS_FORMAT_POSTROW, 

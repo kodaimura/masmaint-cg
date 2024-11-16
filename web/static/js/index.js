@@ -38,7 +38,7 @@ const download = (zip) => {
 	alink.href = `output/${zip}`;
 	alink.click();
 	document.getElementById('ddl').value = ''
-	renderMessage(`${path} がダウンロードされました。`, true);
+	renderMessage(`${zip} がダウンロードされました。`, true);
 }
 
 const handleErrors = (errors) => {
