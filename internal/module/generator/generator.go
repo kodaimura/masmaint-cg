@@ -227,15 +227,22 @@ func (gen *generator) generateServiceFile(path string, table ddlparse.Table) err
 	return nil
 }
 
-// controller.go コード生成
-func (gen *generator) codeController(table ddlparse.Table) string {
-	tn := strings.ToLower(table.Name)
-	return fmt.Sprintf(
-		CONTROLLER_FORMAT, 
-		tn, tn, tn, tn, tn, tn, tn,
-	)
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  コード生成用共通  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// カラム名 -> Goフィールド名
+func (gen *generator) getFieldName(columnName, tableName string) string {
+	cn := strings.ToLower(columnName)
+	tn := strings.ToLower(tableName)
+	pf := tn + "_"
+	if (strings.HasPrefix(cn, pf)) {
+		cn = cn[len(pf):]
+	}
+	return SnakeToPascal(cn)
 }
 
+// データ型 -> Goデータ型
 func (gen *generator) dataTypeToGoType(dataType string) string {
 	dataType = strings.ToUpper(dataType)
 
@@ -252,17 +259,7 @@ func (gen *generator) dataTypeToGoType(dataType string) string {
 	}
 }
 
-
-func (gen *generator) getFieldName(columnName, tableName string) string {
-	cn := strings.ToLower(columnName)
-	tn := strings.ToLower(tableName)
-	pf := tn + "_"
-	if (strings.HasPrefix(cn, pf)) {
-		cn = cn[len(pf):]
-	}
-	return SnakeToPascal(cn)
-}
-
+// Null許容のカラムか判定
 func (gen *generator) isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
 	if (column.Constraint.IsNotNull) {
 		return false
@@ -284,7 +281,108 @@ func (gen *generator) isNullColumn(column ddlparse.Column, constraints ddlparse.
 	return true
 }
 
-// model.go コード
+// INSERTで指定するカラムか判定
+func (gen *generator)isInsertColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+	return true
+}
+
+// UPDATEで指定するカラムか判定
+func (gen *generator)isUpdateColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if c.Constraint.IsPrimaryKey {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+	return true
+}
+
+// INSERTするカラムのリストを取得
+func (gen *generator)getInsertColumns(table ddlparse.Table) []ddlparse.Column {
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if gen.isInsertColumn(c) {
+			ret = append(ret, c)
+		}	
+	}
+	return ret
+}
+
+// UPDATEするカラムのリストを取得
+func (gen *generator)getUpdateColumns(table ddlparse.Table) []ddlparse.Column {
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if gen.isUpdateColumn(c) {
+			ret = append(ret, c)
+		}	
+	}
+	return ret
+}
+
+// 主キーカラムのリストを取得
+func (gen *generator)getPrimaryKeyColumns(table ddlparse.Table) []ddlparse.Column {
+	pkcols := []string{}
+	for _, pk := range table.Constraints.PrimaryKey {
+		for _, name := range pk.ColumnNames {
+			pkcols = append(pkcols, name)
+		}
+	}
+
+	names := []string{}
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if c.Constraint.IsPrimaryKey || Contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
+			if !Contains(names, c.Name) {
+				names = append(names, c.Name)
+				ret = append(ret, c)
+			}
+		}
+	}
+	return ret
+}
+
+// AUTO_INCREMENTのカラムを取得（1つ以下である前提）
+func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
+	for _, c := range table.Columns {
+		if c.Constraint.IsAutoincrement {
+			return c, true
+		}
+		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+			return c, true
+		}
+	}
+	return ddlparse.Column{}, false
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  moduleコード生成  //////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// controller.go コード生成
+func (gen *generator) codeController(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	return fmt.Sprintf(
+		CONTROLLER_FORMAT, 
+		tn, tn, tn, tn, tn, tn, tn,
+	)
+}
+
+// model.go コード生成
 func (gen *generator)codeModel(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
@@ -306,8 +404,7 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 	)
 }
 
-
-// request.go コード
+// request.go コード生成
 func (gen *generator)codeRequest(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQUEST_FORMAT, 
@@ -340,7 +437,6 @@ func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
-// request.go コード
 func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	
@@ -364,31 +460,10 @@ func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
-func (gen *generator)getPKColumns(table ddlparse.Table) []ddlparse.Column {
-	pkcols := []string{}
-	for _, pk := range table.Constraints.PrimaryKey {
-		for _, name := range pk.ColumnNames {
-			pkcols = append(pkcols, name)
-		}
-	}
-
-	names := []string{}
-	ret := []ddlparse.Column{}
-	for _, c := range table.Columns {
-		if c.Constraint.IsPrimaryKey || Contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
-			if !Contains(names, c.Name) {
-				names = append(names, c.Name)
-				ret = append(ret, c)
-			}
-		}
-	}
-	return ret
-}
-
 func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	code := ""
-	for _, column := range gen.getPKColumns(table) {
+	for _, column := range gen.getPrimaryKeyColumns(table) {
 		cn := strings.ToLower(column.Name)
 		code += "\t" + gen.getFieldName(cn , tn) + " ";
 		if gen.isNullColumn(column, table.Constraints) {
@@ -403,6 +478,7 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
+// repository.go コード生成
 func (gen *generator)codeRepository(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
@@ -440,10 +516,10 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
-	query := "\n\t`SELECT\n"
+	query := "\n\t`SELECT"
 	for i, c := range table.Columns {
 		if i == 0 {
-			query += fmt.Sprintf("\t\t%s", c.Name)
+			query += fmt.Sprintf("\n\t\t%s", c.Name)
 		} else {
 			query += fmt.Sprintf("\n\t\t,%s", c.Name)
 		}
@@ -472,10 +548,10 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
-	query := "\n\t`SELECT\n"
+	query := "\n\t`SELECT"
 	for i, c := range table.Columns {
 		if i == 0 {
-			query += fmt.Sprintf("\t\t%s", c.Name)
+			query += fmt.Sprintf("\n\t\t%s", c.Name)
 		} else {
 			query += fmt.Sprintf("\n\t\t,%s", c.Name)
 		}
@@ -496,7 +572,6 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	) 
 }
 
-
 func (gen *generator)getBindVar(n int) string {
 	if gen.rdbms == "postgres" {
 		return fmt.Sprintf("$%d", n)
@@ -505,7 +580,6 @@ func (gen *generator)getBindVar(n int) string {
 	}
 }
 
-
 func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
 	var ls []string
 	for i := 1; i <= bindCount; i++ {
@@ -513,35 +587,6 @@ func (gen *generator)concatBindVariableWithCommas(bindCount int) string {
 	}
 	return strings.Join(ls, ",")
 }
-
-
-func (gen *generator)isInsertColumn(c ddlparse.Column) bool {
-	if c.Constraint.IsAutoincrement {
-		return false
-	}
-	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-		return false
-	}
-	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-		return false
-	}
-
-	return true
-}
-
-
-func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
-	for _, c := range table.Columns {
-		if c.Constraint.IsAutoincrement {
-			return c, true
-		}
-		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-			return c, true
-		}
-	}
-	return ddlparse.Column{}, false
-}
-
 
 func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 	_, found := gen.getAutoIncrementColumn(table)
@@ -555,32 +600,28 @@ func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 	return gen.codeRepositoryInsertNomal(table)
 }
 
-
 func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
+	insColumns := gen.getInsertColumns(table)
 
-	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			bindCount += 1
-			if bindCount == 1 {
-				query += fmt.Sprintf("\t\t%s", c.Name)
-			} else {
-				query += fmt.Sprintf("\n\t\t,%s", c.Name)
-			}
+	for i, c := range insColumns {
+		bindCount += 1
+		if i == 0 {
+			query += fmt.Sprintf("\n\t\t%s", c.Name)
+		} else {
+			query += fmt.Sprintf("\n\t\t,%s", c.Name)
 		}	
 	}
 	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
-		}
+	for _, c := range insColumns {
+		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
 
@@ -592,36 +633,32 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	) 
 }
 
-
 func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
+	insColumns := gen.getInsertColumns(table)
 	aiColumn, _ := gen.getAutoIncrementColumn(table)
 	aicn := strings.ToLower(aiColumn.Name)
 	aicnc := SnakeToCamel(aicn)
 
-	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			bindCount += 1
-			if bindCount == 1 {
-				query += fmt.Sprintf("\t\t%s", c.Name)
-			} else {
-				query += fmt.Sprintf("\n\t\t,%s", c.Name)
-			}
-		}	
+	for i, c := range insColumns {
+		bindCount += 1
+		if i == 0 {
+			query += fmt.Sprintf("\n\t\t%s", c.Name)
+		} else {
+			query += fmt.Sprintf("\n\t\t,%s", c.Name)
+		}
 	}
 	query += fmt.Sprintf("\n\t ) VALUES(%s)", gen.concatBindVariableWithCommas(bindCount))
 	query += fmt.Sprintf("\n\t RETURNING %s`\n", aicn)
 
 	binds := "\n"
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
-		}
+	for _, c := range insColumns {
+		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
 
@@ -634,35 +671,32 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	) 
 }
 
-
 func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
+	insColumns := gen.getInsertColumns(table)
 	aiColumn, _ := gen.getAutoIncrementColumn(table)
 	aicn := strings.ToLower(aiColumn.Name)
 	aicnc := SnakeToCamel(aicn)
 
-	query := fmt.Sprintf("\n\t`INSERT INTO %s (\n", tn)
+	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			bindCount += 1
-			if bindCount == 1 {
-				query += fmt.Sprintf("\t\t%s", c.Name)
-			} else {
-				query += fmt.Sprintf("\n\t\t,%s", c.Name)
-			}
-		}	
+	for i, c := range insColumns {
+		bindCount += 1
+		if i == 0 {
+			query += fmt.Sprintf("\n\t\t%s", c.Name)
+		} else {
+			query += fmt.Sprintf("\n\t\t,%s", c.Name)
+		}
+		
 	}
 	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
-		}
+	for _, c := range insColumns {
+		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
 
@@ -675,61 +709,38 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	) 
 }
 
-func (gen *generator)isUpdateColumn(c ddlparse.Column) bool {
-	if c.Constraint.IsAutoincrement {
-		return false
-	}
-	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-		return false
-	}
-	if c.Constraint.IsPrimaryKey {
-		return false
-	}
-	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-		return false
-	}
-
-	return true
-}
-
 func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
+	updColumns := gen.getUpdateColumns(table)
+	pkColumns := gen.getPrimaryKeyColumns(table)
 
-	query := fmt.Sprintf("\n\t`UPDATE %s\n\t SET ", tn) 
 	bindCount := 0
-	for _, c := range table.Columns {
-		if gen.isUpdateColumn(c) {
-			bindCount += 1
-			if bindCount == 1 {
-				query += fmt.Sprintf("%s = %s\n", c.Name, gen.getBindVar(bindCount))
-			} else {
-				query += fmt.Sprintf("\t\t,%s = %s\n", c.Name, gen.getBindVar(bindCount))
-			}
-		}	
+	query := fmt.Sprintf("\n\t`UPDATE %s\n\t SET ", tn)
+	for i, c := range updColumns {
+		bindCount += 1
+		if i > 0 {
+			query += "\t\t,"
+		}
+		query += fmt.Sprintf("%s = %s\n", c.Name, gen.getBindVar(bindCount))
 	}
 	query += "\t WHERE "
-	isFirst := true
-	for _, c := range gen.getPKColumns(table) {
+	for i, c := range pkColumns {
 		bindCount += 1
-		if isFirst {
-			query += fmt.Sprintf("%s = %s", c.Name, gen.getBindVar(bindCount))
-			isFirst = false
-		} else {
-			query += fmt.Sprintf("\n\t   AND %s = %s", c.Name, gen.getBindVar(bindCount))
+		if i > 0 {
+			query += "\n\t   AND "
 		}
+		query += fmt.Sprintf("%s = %s", c.Name, gen.getBindVar(bindCount))
 	}
 	query += "`"
 
 	binds := "\n"
-	for _, c := range table.Columns {
-		if gen.isUpdateColumn(c) {
-			binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
-		}
+	for _, c := range updColumns {
+		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
-	for _, c := range gen.getPKColumns(table) {
+	for _, c := range pkColumns {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
@@ -751,6 +762,7 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	return fmt.Sprintf(REQPOSITORY_FORMAT_DELETE, tnc, tni, tnp, tni, tn) 
 }
 
+// service.go コード生成
 func (gen *generator) codeService(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
@@ -776,8 +788,8 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range gen.getPKColumns(table) {
-		if i != 0 {
+	for i, column := range gen.getPrimaryKeyColumns(table) {
+		if i > 0 {
 			fields += ", "
 		} 
 		fn := gen.getFieldName(column.Name ,tn)
@@ -789,7 +801,6 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 		tnp, tnp, tnp, tnp, fields,
 	) 
 }
-
 
 func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
@@ -810,8 +821,8 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range gen.getPKColumns(table) {
-		if i != 0 {
+	for i, column := range gen.getPrimaryKeyColumns(table) {
+		if i > 0 {
 			fields += ", "
 		} 
 		fn := gen.getFieldName(column.Name ,tn)
@@ -823,6 +834,7 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 		tnp, tnp, tnp, tnp, fields,
 	) 
 }
+
 /*
 // static生成
 func (gen *generator) generateStatic() error {
