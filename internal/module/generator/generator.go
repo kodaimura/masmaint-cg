@@ -849,12 +849,15 @@ func (gen *generator) generateWeb(path string) error {
 	if err := gen.generateStatic(path); err != nil {
 		return err
 	}
-	/*
 	if err := gen.generateTemplate(path); err != nil {
 		return err
-	}*/
+	}
 	return nil
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////  staticコード生成  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
 // static生成
 func (gen *generator) generateStatic(path string) error {
@@ -984,7 +987,6 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 	s4 = strings.TrimSuffix(s4, "\n")
 	s5 := ""
 	for _, c := range table.Columns {
-		if 
 		cn := strings.ToLower(c.Name)
 		ctype := gen.dataTypeToGoType(c.DataType.Name)
 		if ctype == "int" {
@@ -1046,5 +1048,84 @@ func (gen *generator) codeJsDeleteRows(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		JS_FORMAT_DELETEROWS,
 		strings.ToLower(table.Name),
+	)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////  templateコード生成  /////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// template生成
+func (gen *generator) generateTemplate(path string) error {
+	path = fmt.Sprintf("%s/template", path)
+	if err := os.MkdirAll(path, 0777); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	if err := gen.generateTemplateMenuFile(path); err != nil {
+		return err
+	}
+	return gen.generateTemplateFiles(path)
+}
+
+// template/_menu.html生成
+func (gen *generator) generateTemplateMenuFile(path string) error {
+	path = fmt.Sprintf("%s/_menu.html", path)
+	code := gen.codeTemplateMenu()
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// template/:table_name.html コード生成
+func (gen *generator) codeTemplateMenu() string {
+	s1 := ""
+	for _, table := range gen.tables {
+		tn := strings.ToLower(table.Name)
+		s1 += fmt.Sprintf("\t\t<li class='nav-item'><a href='/%s' class='nav-link py-1'>%s</a></li>\n", tn, tn)
+	}
+	s1 = strings.TrimSuffix(s1, "\n")
+	return fmt.Sprintf(TEMPLATE_FORMAT_MENU, s1)
+}
+
+func (gen *generator) generateTemplateFiles(path string) error {
+	for _, table := range gen.tables {
+		if err := gen.generateTemplateFile(path, table); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// template/:table_name.html生成
+func (gen *generator) generateTemplateFile(path string, table ddlparse.Table) error {
+	tn := strings.ToLower(table.Name)
+	path = fmt.Sprintf("%s/%s.html", path, tn)
+	code := gen.codeTemplate(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// template/:table_name.html コード生成
+func (gen *generator) codeTemplate(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	s1 := ""
+	for _, c := range table.Columns {
+		cn := strings.ToLower(c.Name)
+		if gen.isNullColumn(c, table.Constraints) || !gen.isInsertColumn(c) {
+			s1 += fmt.Sprintf("\t\t\t\t\t\t\t\t<th>%s</th>\n", cn)
+		} else {
+			s1 += fmt.Sprintf("\t\t\t\t\t\t\t\t<th>%s<spnn class=\"text-danger\">*</spnn></th>\n", cn)
+		}
+	}
+	s1 = strings.TrimSuffix(s1, "\n")
+	return fmt.Sprintf(
+		TEMPLATE_FORMAT, 
+		tn, s1, tn,
 	)
 }

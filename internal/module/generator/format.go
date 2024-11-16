@@ -497,3 +497,55 @@ const JS_FORMAT_DELETEROWS =
 	renderMessage('削除', successCount, true);
 	renderMessage('削除', errorCount, false);
 }`
+
+const TEMPLATE_FORMAT =
+`<!DOCTYPE html>
+<html>
+
+<head>
+	{{template "head" .}}
+</head>
+
+<body>
+	{{template "header" .}}
+	<div class="container-fluid">
+		{{template "menu" .}}
+		<main>
+			<div class="w-100 px-3 py-3">
+				<h1 class="h4">%s</h1>
+				<div id="message"></div>
+				<button type="button" class="btn btn-danger" data-bs-toggle="modal"
+					data-bs-target="#modal-delete">削除</button>
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal"
+					data-bs-target="#modal-save">保存</button>
+				<button type="button" class="btn btn-secondary" id="reload">リロード</button>
+				<div class="table-responsive mt-2" style="max-height: calc(100vh - 190px);">
+					<table class="table table-hover table-bordered table-sm">
+						<thead class="fixed-table-header bg-light">
+							<tr>
+								<th>削除</th>
+%s
+							</tr>
+						</thead>
+						<tbody id="records">
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</main>
+	</div>
+	{{template "modal" .}}
+	<script type="module" src="js/%s.js"></script>
+	{{template "footer" .}}
+</body>
+
+</html>`
+
+const TEMPLATE_FORMAT_MENU =
+`{{define "menu"}}
+<div class="sidemenu vh-100" style="overflow-y: auto;">
+	<ul class="nav flex-column mb-5">
+%s
+	</ul>
+</div>
+{{end}}`
