@@ -419,10 +419,7 @@ func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	
 	code := ""
-	for _, column := range table.Columns {
-		if !gen.isInsertColumn(column) {
-			continue
-		}
+	for _, column := range gen.getInsertColumns(table) {
 		cn := strings.ToLower(column.Name)
 		code += "\t" + gen.getFieldName(cn ,tn) + " ";
 		if gen.isNullColumn(column, table.Constraints) {
