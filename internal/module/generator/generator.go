@@ -280,63 +280,62 @@ func (gen *generator)codeRequestGo(table ddlparse.Table) string {
 }
 
 func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
-	tn := strings.ToLower(table.Name)
-	
-	code := ""
-	for _, c := range gen.getInsertColumns(table) {
-		cn := strings.ToLower(c.Name)
-		code += "\t" + gen.getFieldName(cn ,tn) + " ";
-		if gen.isNullColumn(c, table.Constraints) {
-			code += "*"
-		}
-		code += gen.dataTypeToGoType(c.DataType.Name) + " "
-		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(c, table.Constraints) {
-			code += " binding:\"required\"`\n"
-		}
-	}
-	return strings.TrimSuffix(code, "\n")
+    tn := strings.ToLower(table.Name)
+    
+    code := ""
+    for _, c := range gen.getInsertColumns(table) {
+        cn := strings.ToLower(c.Name)
+        code += fmt.Sprintf("\t%s ", gen.getFieldName(cn ,tn))
+        if gen.isNullColumn(c, table.Constraints) {
+            code += "*"
+        }
+        code += fmt.Sprintf("%s `json:\"%s\"", gen.dataTypeToGoType(c.DataType.Name), cn)
+        if !gen.isNullColumn(c, table.Constraints) {
+            code += " binding:\"required\""
+        }
+        code += "`\n"
+    }
+    return strings.TrimSuffix(code, "\n")
 }
 
 func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
-	tn := strings.ToLower(table.Name)
-	
-	code := ""
-	for _, c := range table.Columns {
-		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-			continue
-		}
-		cn := strings.ToLower(c.Name)
-		code += "\t" + gen.getFieldName(cn ,tn) + " ";
-		if gen.isNullColumn(c, table.Constraints) {
-			code += "*"
-		}
-		code += gen.dataTypeToGoType(c.DataType.Name) + " "
-		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(c, table.Constraints) {
-			code += " binding:\"required\"`"
-		}
-		code += "\n"
-	}
-	return strings.TrimSuffix(code, "\n")
+    tn := strings.ToLower(table.Name)
+    
+    code := ""
+    for _, c := range table.Columns {
+        if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+            continue
+        }
+        cn := strings.ToLower(c.Name)
+        code += fmt.Sprintf("\t%s ", gen.getFieldName(cn ,tn))
+        if gen.isNullColumn(c, table.Constraints) {
+            code += "*"
+        }
+        code += fmt.Sprintf("%s `json:\"%s\"", gen.dataTypeToGoType(c.DataType.Name), cn)
+        if !gen.isNullColumn(c, table.Constraints) {
+            code += " binding:\"required\""
+        }
+        code += "`\n"
+    }
+    return strings.TrimSuffix(code, "\n")
 }
 
 func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
-	tn := strings.ToLower(table.Name)
-	code := ""
-	for _, c := range gen.getPrimaryKeyColumns(table) {
-		cn := strings.ToLower(c.Name)
-		code += "\t" + gen.getFieldName(cn , tn) + " ";
-		if gen.isNullColumn(c, table.Constraints) {
-			code += "*"
-		}
-		code += gen.dataTypeToGoType(c.DataType.Name) + " "
-		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(c, table.Constraints) {
-			code += " binding:\"required\"`\n"
-		}
-	}
-	return strings.TrimSuffix(code, "\n")
+    tn := strings.ToLower(table.Name)
+    code := ""
+    for _, c := range gen.getPrimaryKeyColumns(table) {
+        cn := strings.ToLower(c.Name)
+        code += fmt.Sprintf("\t%s ", gen.getFieldName(cn ,tn))
+        if gen.isNullColumn(c, table.Constraints) {
+            code += "*"
+        }
+        code += fmt.Sprintf("%s `json:\"%s\"", gen.dataTypeToGoType(c.DataType.Name), cn)
+        if !gen.isNullColumn(c, table.Constraints) {
+            code += " binding:\"required\""
+        }
+        code += "`\n"
+    }
+    return strings.TrimSuffix(code, "\n")
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -357,14 +356,11 @@ func (gen *generator)generateRepositoryGoFile(path string, table ddlparse.Table)
 // repository.go コード生成
 func (gen *generator)codeRepositoryGo(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
-	tnp := SnakeToPascal(tn)
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY,
 		tn,
 		gen.codeRepositoryInterface(table),
-		tnc, tnp, tnp, tnc,
 		gen.codeRepositoryGet(table),
 		gen.codeRepositoryGetOne(table),
 		gen.codeRepositoryInsert(table),
@@ -386,7 +382,6 @@ func (gen *generator)codeRepositoryInterface(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_INTERFACE,
-		tnp, 
 		tni, tnp, tnp, 
 		tni, tnp, tnp, 
 		tni, tnp, retType,
@@ -397,7 +392,6 @@ func (gen *generator)codeRepositoryInterface(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
@@ -419,7 +413,7 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_GET,
-		tnc, tni, tnp, tnp, tni, 
+		tni, tnp, tnp, tni, 
 		query,
 		tnp, tnp, tni, tnp,
 		scan,
@@ -429,7 +423,6 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
@@ -451,7 +444,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_GETONE,
-		tnc, tni, tnp, tnp, tnp, tni, 
+		tni, tnp, tnp, tnp, tni, 
 		query, scan,
 	) 
 }
@@ -478,7 +471,7 @@ func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 		if gen.rdbms == "mysql" {
 			return gen.codeRepositoryInsertAIMySQL(table)
 		} else {
-			return gen.codeRepositoryInsertNomal(table)
+			return gen.codeRepositoryInsertAI(table)
 		}	
 	}
 	return gen.codeRepositoryInsertNomal(table)
@@ -486,7 +479,6 @@ func (gen *generator)codeRepositoryInsert(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 	inscols := gen.getInsertColumns(table)
@@ -511,14 +503,13 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_INSERT,
-		tnc, tni, tnp,
+		tni, tnp,
 		query, binds,
 	) 
 }
 
 func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 	inscols := gen.getInsertColumns(table)
@@ -547,7 +538,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_INSERT_AI,
-		tnc, tni, tnp,
+		tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
 	) 
@@ -555,7 +546,6 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 	inscols := gen.getInsertColumns(table)
@@ -584,7 +574,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_INSERT_AI_MYSQL,
-		tnc, tni, tnp,
+		tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
 	) 
@@ -592,7 +582,6 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 
 func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 	updcols := gen.getUpdateColumns(table)
@@ -628,20 +617,19 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_UPDATE,
-		tnc, tni, tnp,
+		tni, tnp,
 		query, binds,
 	) 
 }
 
 func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(
 		FORMAT_REPOSITORY_DELETE, 
-		tnc, tni, tnp, tni, tn,
+		tni, tnp, tni, tn,
 	) 
 }
 

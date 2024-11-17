@@ -126,13 +126,13 @@ import (
 %s
 
 
-type %sRepository struct {
+type repository struct {
 	db *sql.DB
 }
 
-func New%sRepository() %sRepository {
+func NewRepository() Repository {
 	db := db.GetDB()
-	return &%sRepository{db}
+	return &repository{db}
 }
 
 
@@ -151,31 +151,31 @@ func New%sRepository() %sRepository {
 %s`
 
 const FORMAT_REPOSITORY_INTERFACE =
-`type %sRepository interface {
-	Get(%s *model.%s) ([]model.%s, error)
-	GetOne(%s *model.%s) (model.%s, error)
-	Insert(%s *model.%s, tx *sql.Tx) %s
-	Update(%s *model.%s, tx *sql.Tx) error
-	Delete(%s *model.%s, tx *sql.Tx) error
+`type Repository interface {
+	Get(%s *%s) ([]%s, error)
+	GetOne(%s *%s) (%s, error)
+	Insert(%s *%s, tx *sql.Tx) %s
+	Update(%s *%s, tx *sql.Tx) error
+	Delete(%s *%s, tx *sql.Tx) error
 }`
 
 const FORMAT_REPOSITORY_GET =
-`func (rep *%sRepository) Get(%s *model.%s) ([]model.%s, error) {
+`func (rep *repository) Get(%s *%s) ([]%s, error) {
 	where, binds := db.BuildWhereClause(%s)
 	query := %s + where
 	rows, err := rep.db.Query(query, binds...)
 	defer rows.Close()
 
 	if err != nil {
-		return []model.%s{}, err
+		return []%s{}, err
 	}
 
-	ret := []model.%s{}
+	ret := []%s{}
 	for rows.Next() {
-		%s := model.%s{}
+		%s := %s{}
 		err = rows.Scan(%s)
 		if err != nil {
-			return []model.%s{}, err
+			return []%s{}, err
 		}
 		ret = append(ret, %s)
 	}
@@ -184,8 +184,8 @@ const FORMAT_REPOSITORY_GET =
 }`
 
 const FORMAT_REPOSITORY_GETONE =
-`func (rep *%sRepository) GetOne(%s *model.%s) (model.%s, error) {
-	var ret model.%s
+`func (rep *repository) GetOne(%s *%s) (%s, error) {
+	var ret %s
 	where, binds := db.BuildWhereClause(%s)
 	query := %s + where
 
@@ -195,7 +195,7 @@ const FORMAT_REPOSITORY_GETONE =
 }`
 
 const FORMAT_REPOSITORY_INSERT =
-`func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) error {
+`func (rep *repository) Insert(%s *%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
 
@@ -210,7 +210,7 @@ const FORMAT_REPOSITORY_INSERT =
 }`
 
 const FORMAT_REPOSITORY_INSERT_AI =
-`func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
+`func (rep *repository) Insert(%s *%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
 
@@ -226,7 +226,7 @@ const FORMAT_REPOSITORY_INSERT_AI =
 }`
 
 const FORMAT_REPOSITORY_INSERT_AI_MYSQL =
-`func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
+`func (rep *repository) Insert(%s *%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
 
@@ -252,7 +252,7 @@ const FORMAT_REPOSITORY_INSERT_AI_MYSQL =
 }`
 
 const FORMAT_REPOSITORY_UPDATE =
-`func (rep *%sRepository) Update(%s *model.%s, tx *sql.Tx) error {
+`func (rep *repository) Update(%s *%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
 
@@ -267,7 +267,7 @@ const FORMAT_REPOSITORY_UPDATE =
 }`
 
 const FORMAT_REPOSITORY_DELETE =
-`func (rep *%sRepository) Delete(%s *model.%s, tx *sql.Tx) error {
+`func (rep *repository) Delete(%s *%s, tx *sql.Tx) error {
 	where, binds := db.BuildWhereClause(%s)
 	cmd := "DELETE FROM %s " + where
 
