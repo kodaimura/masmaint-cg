@@ -1,6 +1,6 @@
 package generator
 
-const CONTROLLER_FORMAT =
+const FORMAT_CONTROLLER =
 `package %s
 
 import (
@@ -89,7 +89,7 @@ func (ctr *controller) Delete(c *gin.Context) {
 }`
 
 
-const MODEL_FORMAT = `
+const FORMAT_MODEL = `
 package %s
 
 type %s struct {
@@ -97,7 +97,7 @@ type %s struct {
 }
 `
 
-const REQUEST_FORMAT = `
+const FORMAT_REQUEST = `
 package %s
 
 type PostBody struct {
@@ -114,7 +114,7 @@ type DeleteBody struct {
 `
 
 
-const REQPOSITORY_FORMAT = 
+const FORMAT_REQPOSITORY = 
 `package %s
 
 import (
@@ -156,7 +156,7 @@ func New%sRepository() %sRepository {
 
 %s`
 
-const REQPOSITORY_FORMAT_GET =
+const FORMAT_REQPOSITORY_GET =
 `func (rep *%sRepository) Get(%s *model.%s) ([]model.%s, error) {
 	where, binds := db.BuildWhereClause(%s)
 	query := %s + where
@@ -180,7 +180,7 @@ const REQPOSITORY_FORMAT_GET =
 	return ret, nil
 }`
 
-const REQPOSITORY_FORMAT_GETONE =
+const FORMAT_REQPOSITORY_GETONE =
 `func (rep *%sRepository) GetOne(%s *model.%s) (model.%s, error) {
 	var ret model.%s
 	where, binds := db.BuildWhereClause(%s)
@@ -191,7 +191,7 @@ const REQPOSITORY_FORMAT_GETONE =
 	return ret, err
 }`
 
-const REQPOSITORY_FORMAT_INSERT =
+const FORMAT_REQPOSITORY_INSERT =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -206,7 +206,7 @@ const REQPOSITORY_FORMAT_INSERT =
 	return err
 }`
 
-const REQPOSITORY_FORMAT_INSERT_AI =
+const FORMAT_REQPOSITORY_INSERT_AI =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -222,7 +222,7 @@ const REQPOSITORY_FORMAT_INSERT_AI =
 	return %s, err
 }`
 
-const REQPOSITORY_FORMAT_INSERT_AI_MYSQL =
+const FORMAT_REQPOSITORY_INSERT_AI_MYSQL =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -248,7 +248,7 @@ const REQPOSITORY_FORMAT_INSERT_AI_MYSQL =
 	return %s, err
 }`
 
-const REQPOSITORY_FORMAT_UPDATE =
+const FORMAT_REQPOSITORY_UPDATE =
 `func (rep *%sRepository) Update(%s *model.%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -263,7 +263,7 @@ const REQPOSITORY_FORMAT_UPDATE =
 	return err
 }`
 
-const REQPOSITORY_FORMAT_DELETE =
+const FORMAT_REQPOSITORY_DELETE =
 `func (rep *%sRepository) Delete(%s *model.%s, tx *sql.Tx) error {
 	where, binds := db.BuildWhereClause(%s)
 	cmd := "DELETE FROM %s " + where
@@ -278,7 +278,7 @@ const REQPOSITORY_FORMAT_DELETE =
 	return err
 }`
 
-const SERVICE_FORMAT =
+const FORMAT_SERVICE =
 `package %s
 
 import (
@@ -315,7 +315,7 @@ func NewService() Service {
 
 %s`
 
-const SERVICE_FORMAT_GET =
+const FORMAT_SERVICE_GET =
 `func (srv *service) Get() ([]%s, error) {
 	rows, err := srv.repository.Get(&%s{})
 	if err != nil {
@@ -325,7 +325,7 @@ const SERVICE_FORMAT_GET =
 	return rows, nil
 }`
 
-const SERVICE_FORMAT_CREATE =
+const FORMAT_SERVICE_CREATE =
 `func (srv *service) Create(input PostBody) (%s, error) {
 	var model %s
 	utils.MapFields(&model, input)
@@ -339,7 +339,7 @@ const SERVICE_FORMAT_CREATE =
 	return srv.repository.GetOne(&%s{ %s })
 }`
 
-const SERVICE_FORMAT_CREATE_AI =
+const FORMAT_SERVICE_CREATE_AI =
 `func (srv *service) Create(input PostBody) (%s, error) {
 	var model %s
 	utils.MapFields(&model, input)
@@ -353,7 +353,7 @@ const SERVICE_FORMAT_CREATE_AI =
 	return srv.repository.GetOne(&%s{ %s })
 }`
 
-const SERVICE_FORMAT_UPDATE =
+const FORMAT_SERVICE_UPDATE =
 `func (srv *service) Update(input PutBody) (%s, error) {
 	var model %s
 	utils.MapFields(&model, input)
@@ -367,7 +367,7 @@ const SERVICE_FORMAT_UPDATE =
 	return srv.repository.GetOne(&%s{ %s })
 }`
 
-const SERVICE_FORMAT_DELETE =
+const FORMAT_SERVICE_DELETE =
 `func (srv *service) Delete(input DeleteBody) error {
 	var model %s
 	utils.MapFields(&model, input)
@@ -380,9 +380,9 @@ const SERVICE_FORMAT_DELETE =
 	return nil
 }`
 
-var JS_FORMAT = ReadFile("_template/js_format.txt")
+var FORMAT_JS = ReadFile("_template/js_format.txt")
 
-const JS_FORMAT_CREATETRNEW =
+const FORMAT_JS_CREATETRNEW =
 `const createTrNew = (elem) => {
 	const tr = document.createElement('tr');
 	tr.id = 'new';
@@ -390,14 +390,14 @@ const JS_FORMAT_CREATETRNEW =
 	return tr;
 }`
 
-const JS_FORMAT_CREATETR =
+const FORMAT_JS_CREATETR =
 `const createTr = (elem) => {
 	const tr = document.createElement('tr');
 	tr.innerHTML = `+"`%s`"+`;
 	return tr;
 }`
 
-const JS_FORMAT_GETROWS =
+const FORMAT_JS_GETROWS =
 `const getRows = async () => {
 	document.getElementById('records').innerHTML = '';
 	const rows = await api.get('%s');
@@ -405,7 +405,7 @@ const JS_FORMAT_GETROWS =
 %s
 }`
 
-const JS_FORMAT_PUTROWS =
+const FORMAT_JS_PUTROWS =
 `const putRows = async () => {
 	let successCount = 0;
 	let errorCount = 0;
@@ -453,7 +453,7 @@ const JS_FORMAT_PUTROWS =
 	renderMessage('更新', errorCount, false);
 }`
 
-const JS_FORMAT_POSTROW =
+const FORMAT_JS_POSTROW =
 `const postRow = async () => {
 	const rowMap = {
 %s
@@ -483,7 +483,7 @@ const JS_FORMAT_POSTROW =
 	}
 }`
 
-const JS_FORMAT_DELETEROWS =
+const FORMAT_JS_DELETEROWS =
 `const deleteRows = async () => {
 	const rows = getDeleteTargetRows();
 	let successCount = 0;
@@ -504,7 +504,7 @@ const JS_FORMAT_DELETEROWS =
 	renderMessage('削除', errorCount, false);
 }`
 
-const TEMPLATE_FORMAT =
+const FORMAT_TEMPLATE =
 `<!DOCTYPE html>
 <html>
 
@@ -547,7 +547,7 @@ const TEMPLATE_FORMAT =
 
 </html>`
 
-const TEMPLATE_FORMAT_MENU =
+const FORMAT_TEMPLATE_MENU =
 `{{define "menu"}}
 <div class="sidemenu vh-100" style="overflow-y: auto;">
 	<ul class="nav flex-column mb-5">

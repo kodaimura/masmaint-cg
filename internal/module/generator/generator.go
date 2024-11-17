@@ -389,7 +389,7 @@ func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Colu
 func (gen *generator) codeController(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	return fmt.Sprintf(
-		CONTROLLER_FORMAT, 
+		FORMAT_CONTROLLER, 
 		tn, tn, tn, tn, tn, tn, tn,
 	)
 }
@@ -411,7 +411,7 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 	}
 	fields = strings.TrimSuffix(fields, "\n")
 	return fmt.Sprintf(
-		MODEL_FORMAT, 
+		FORMAT_MODEL, 
 		tn, tnp, fields,
 	)
 }
@@ -419,7 +419,7 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 // request.go コード生成
 func (gen *generator)codeRequest(table ddlparse.Table) string {
 	return fmt.Sprintf(
-		REQUEST_FORMAT, 
+		FORMAT_REQUEST, 
 		strings.ToLower(table.Name), 
 		gen.codeRequestPostBodyFields(table), 
 		gen.codeRequestPutBodyFields(table),
@@ -495,7 +495,7 @@ func (gen *generator)codeRepository(table ddlparse.Table) string {
 	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT,
+		FORMAT_REQPOSITORY,
 		tn, tnp, 
 		tni, tnp, tnp, 
 		tni, tnp, tnp, 
@@ -542,7 +542,7 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 	scan += "\t\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_GET,
+		FORMAT_REQPOSITORY_GET,
 		tnc, tni, tnp, tnp, tni, 
 		query,
 		tnp, tnp, tni, tnp,
@@ -574,7 +574,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	scan += "\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_GETONE,
+		FORMAT_REQPOSITORY_GETONE,
 		tnc, tni, tnp, tnp, tnp, tni, 
 		query, scan,
 	) 
@@ -634,7 +634,7 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_INSERT,
+		FORMAT_REQPOSITORY_INSERT,
 		tnc, tni, tnp,
 		query, binds,
 	) 
@@ -670,7 +670,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_INSERT_AI,
+		FORMAT_REQPOSITORY_INSERT_AI,
 		tnc, tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
@@ -707,7 +707,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_INSERT_AI_MYSQL,
+		FORMAT_REQPOSITORY_INSERT_AI_MYSQL,
 		tnc, tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
@@ -751,7 +751,7 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_UPDATE,
+		FORMAT_REQPOSITORY_UPDATE,
 		tnc, tni, tnp,
 		query, binds,
 	) 
@@ -764,7 +764,7 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(
-		REQPOSITORY_FORMAT_DELETE, 
+		FORMAT_REQPOSITORY_DELETE, 
 		tnc, tni, tnp, tni, tn,
 	) 
 }
@@ -774,7 +774,7 @@ func (gen *generator) codeService(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
 	return fmt.Sprintf(
-		SERVICE_FORMAT, 
+		FORMAT_SERVICE, 
 		tn, tnp, tnp, tnp,
 		gen.codeServiceGet(table),
 		gen.codeServiceCreate(table),
@@ -788,7 +788,7 @@ func (gen *generator)codeServiceGet(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	return fmt.Sprintf(
-		SERVICE_FORMAT_GET,
+		FORMAT_SERVICE_GET,
 		tnp, tnp, tnp,
 	) 
 }
@@ -815,7 +815,7 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 	}
 
 	return fmt.Sprintf(
-		SERVICE_FORMAT_CREATE,
+		FORMAT_SERVICE_CREATE,
 		tnp, tnp, tnp, tnp, s1,
 	) 
 }
@@ -829,7 +829,7 @@ func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
 	fn := gen.getFieldName(aicn ,tn)
 
 	return fmt.Sprintf(
-		SERVICE_FORMAT_CREATE_AI,
+		FORMAT_SERVICE_CREATE_AI,
 		tnp, tnp, aicnc, tnp, tnp, fmt.Sprintf("%s: %s", fn, aicnc),
 	) 
 }
@@ -848,7 +848,7 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 	}
 
 	return fmt.Sprintf(
-		SERVICE_FORMAT_UPDATE,
+		FORMAT_SERVICE_UPDATE,
 		tnp, tnp, tnp, tnp, s1,
 	) 
 }
@@ -857,7 +857,7 @@ func (gen *generator)codeServiceDelete(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
 
-	return fmt.Sprintf(SERVICE_FORMAT_DELETE, tnp) 
+	return fmt.Sprintf(FORMAT_SERVICE_DELETE, tnp) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -934,7 +934,7 @@ func (gen *generator) generateJsFile(path string, table ddlparse.Table) error {
 // js/:table_name.js コード生成
 func (gen *generator) codeJs(table ddlparse.Table) string {
 	return fmt.Sprintf(
-		JS_FORMAT, 
+		FORMAT_JS, 
 		gen.codeJsCreateTrNew(table),
 		gen.codeJsCreateTr(table),
 		gen.codeJsGetRows(table),
@@ -953,7 +953,7 @@ func (gen *generator) codeJsCreateTrNew(table ddlparse.Table) string {
 			s1 += "\n\t\t<td><input type='text' disabled></td>"
 		}
 	}
-	return fmt.Sprintf(JS_FORMAT_CREATETRNEW, s1)
+	return fmt.Sprintf(FORMAT_JS_CREATETRNEW, s1)
 }
 
 func (gen *generator) codeJsCreateTr(table ddlparse.Table) string {
@@ -972,7 +972,7 @@ func (gen *generator) codeJsCreateTr(table ddlparse.Table) string {
 			)
 		}
 	}
-	return fmt.Sprintf(JS_FORMAT_CREATETR, s1)
+	return fmt.Sprintf(FORMAT_JS_CREATETR, s1)
 }
 
 func (gen *generator) codeJsGetRows(table ddlparse.Table) string {
@@ -983,7 +983,7 @@ func (gen *generator) codeJsGetRows(table ddlparse.Table) string {
 		s1 += fmt.Sprintf("\taddChangeEvent('%s');\n", cn)
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
-	return fmt.Sprintf(JS_FORMAT_GETROWS, tn, s1)
+	return fmt.Sprintf(FORMAT_JS_GETROWS, tn, s1)
 }
 
 func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
@@ -1038,7 +1038,7 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 	s6 = strings.TrimSuffix(s6, "\n")
 
 	return fmt.Sprintf(
-		JS_FORMAT_PUTROWS, 
+		FORMAT_JS_PUTROWS, 
 		s1, s2, s3, s4, s5, tn, s6,
 	)
 }
@@ -1067,14 +1067,14 @@ func (gen *generator) codeJsPostRow(table ddlparse.Table) string {
 	s2 = strings.TrimSuffix(s2, "\n")
 
 	return fmt.Sprintf(
-		JS_FORMAT_POSTROW, 
+		FORMAT_JS_POSTROW, 
 		s1, s2, tn, tn,
 	)
 }
 
 func (gen *generator) codeJsDeleteRows(table ddlparse.Table) string {
 	return fmt.Sprintf(
-		JS_FORMAT_DELETEROWS,
+		FORMAT_JS_DELETEROWS,
 		strings.ToLower(table.Name),
 	)
 }
@@ -1118,7 +1118,7 @@ func (gen *generator) codeTemplateMenu() string {
 		s1 += fmt.Sprintf("\t\t<li class='nav-item'><a href='/%s' class='nav-link py-1'>%s</a></li>\n", tn, tn)
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
-	return fmt.Sprintf(TEMPLATE_FORMAT_MENU, s1)
+	return fmt.Sprintf(FORMAT_TEMPLATE_MENU, s1)
 }
 
 func (gen *generator) generateTemplateFiles(path string) error {
@@ -1156,7 +1156,7 @@ func (gen *generator) codeTemplate(table ddlparse.Table) string {
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
 	return fmt.Sprintf(
-		TEMPLATE_FORMAT, 
+		FORMAT_TEMPLATE, 
 		tn, s1, tn,
 	)
 }
