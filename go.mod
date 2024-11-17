@@ -6,12 +6,15 @@ toolchain go1.22.9
 
 require (
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/joho/godotenv v1.5.1
 	github.com/kodaimura/ddlparse v1.1.0
+	github.com/lib/pq v1.10.9
 	github.com/mattn/go-sqlite3 v1.14.17
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
