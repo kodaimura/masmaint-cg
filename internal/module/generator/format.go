@@ -483,7 +483,7 @@ const FORMAT_JS_PUTROWS =
 
 %s
 
-	for (let i = 0; i < code.length; i++) {
+	for (let i = 0; i < %s.length; i++) {
 		const rowMap = {
 %s
 		}
@@ -545,7 +545,7 @@ const FORMAT_JS_POSTROW =
 			renderMessage('登録', 1, true);
 		} catch (e) {
 			Object.keys(rowMap).forEach(key => {
-				rowMap[key].classList.toggle('error', key === e.details.field || `+"%s.${key}"+` === e.details.column);
+				rowMap[key].classList.toggle('error', key === e.details.field || `+"`%s.${key}`"+` === e.details.column);
 			});
 			renderMessage('登録', 1, false);
 		}

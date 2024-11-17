@@ -999,45 +999,48 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 		s2 += fmt.Sprintf("\tconst %s_bk = document.getElementsByName('%s_bk');\n", cn, cn)
 	}
 	s2 = strings.TrimSuffix(s2, "\n")
-	s3 := ""
-	for _, c := range updcols {
-		cn := strings.ToLower(c.Name)
-		s3 += fmt.Sprintf("\t\t\t'%s': %s[i],\n", cn, cn)
-	}
-	s3 = strings.TrimSuffix(s3, "\n")
+	s3 := strings.ToLower(table.Columns[0].Name)
 	s4 := ""
 	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
-		s4 += fmt.Sprintf("\t\t\t'%s': %s_bk[i],\n", cn, cn)
+		s4 += fmt.Sprintf("\t\t\t'%s': %s[i],\n", cn, cn)
 	}
 	s4 = strings.TrimSuffix(s4, "\n")
 	s5 := ""
-	for _, c := range table.Columns {
+	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
-		ctype := gen.dataTypeToGoType(c.DataType.Name)
-		if ctype == "int" {
-			s5 += fmt.Sprintf("\t\t\t\t%s: parseIntOrReturnOriginal(%s[i].value),\n", cn, cn)
-		} else if ctype == "float64" {
-			s5 += fmt.Sprintf("\t\t\t\t%s: parseFloatOrReturnOriginal(%s[i].value),\n", cn, cn)
-		} else {
-			s5 += fmt.Sprintf("\t\t\t\t%s: %s[i].value,\n", cn, cn)
-		}
+		s5 += fmt.Sprintf("\t\t\t'%s': %s_bk[i],\n", cn, cn)
 	}
 	s5 = strings.TrimSuffix(s5, "\n")
 	s6 := ""
 	for _, c := range table.Columns {
 		cn := strings.ToLower(c.Name)
-		s6 += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
+		ctype := gen.dataTypeToGoType(c.DataType.Name)
+		if ctype == "int" {
+			s6 += fmt.Sprintf("\t\t\t\t%s: parseIntOrReturnOriginal(%s[i].value),\n", cn, cn)
+		} else if ctype == "float64" {
+			s6 += fmt.Sprintf("\t\t\t\t%s: parseFloatOrReturnOriginal(%s[i].value),\n", cn, cn)
+		} else if gen.isNullColumn(c, table.Constraints) {
+			s6 += fmt.Sprintf("\t\t\t\t%s: emptyToNull(%s[i].value),\n", cn, cn)
+		} else {
+			s6 += fmt.Sprintf("\t\t\t\t%s: %s[i].value,\n", cn, cn)
+		}
+	}
+	s6 = strings.TrimSuffix(s6, "\n")
+	s7 := ""
+	for _, c := range table.Columns {
+		cn := strings.ToLower(c.Name)
+		s7 += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
 	}
 	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
-		s6 += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
+		s7 += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
 	}
-	s6 = strings.TrimSuffix(s6, "\n")
+	s7 = strings.TrimSuffix(s7, "\n")
 
 	return fmt.Sprintf(
 		FORMAT_JS_PUTROWS, 
-		s1, s2, s3, s4, s5, tn, s6,
+		s1, s2, s3, s4, s5, s6, tn, s7,
 	)
 }
 
@@ -1058,6 +1061,8 @@ func (gen *generator) codeJsPostRow(table ddlparse.Table) string {
 			s2 += fmt.Sprintf("\t\t\t%s: parseIntOrReturnOriginal(rowMap.%s.value),\n", cn, cn)
 		} else if ctype == "float64" {
 			s2 += fmt.Sprintf("\t\t\t%s: parseFloatOrReturnOriginal(rowMap.%s.value),\n", cn, cn)
+		} else if gen.isNullColumn(c, table.Constraints) {
+			s2 += fmt.Sprintf("\t\t\t%s: emptyToNull(rowMap.%s.value),\n", cn, cn)
 		} else {
 			s2 += fmt.Sprintf("\t\t\t%s: rowMap.%s.value,\n", cn, cn)
 		}

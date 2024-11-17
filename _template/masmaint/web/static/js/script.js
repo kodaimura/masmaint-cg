@@ -5,6 +5,14 @@ export const getJaTime = () => {
     return jaTime;
 };
 
+export const nullToEmpty = (s) => {
+    return (s == null) ? '' : s;
+}
+
+export const emptyToNull = (s) => {
+    return (s == '') ? null : s;
+}
+
 export const parseIntOrReturnOriginal = (value) => {
     if (value === "") {
         return null;

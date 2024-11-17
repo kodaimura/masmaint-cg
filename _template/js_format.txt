@@ -1,5 +1,5 @@
 import { api } from '/js/api.js';
-import { parseFloatOrReturnOriginal, parseIntOrReturnOriginal } from './script.js';
+import { nullToEmpty, emptyToNull, parseFloatOrReturnOriginal, parseIntOrReturnOriginal } from './script.js';
 
 /* 初期設定 */
 window.addEventListener('DOMContentLoaded', (event) => {
@@ -49,10 +49,6 @@ const renderMessage = (msg, count, isSuccess) => {
 
 const clearMessage = () => {
     document.getElementById('message').innerHTML = '';
-}
-
-const nullToEmpty = (s) => {
-    return (s == null) ? '' : s;
 }
 
 /* changeイベントハンドラ */
