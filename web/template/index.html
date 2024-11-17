@@ -1,6 +1,10 @@
 {{template "header" .}}
-<a href="https://masmaint-sample.carkodr.com/mastertables" style="text-decoration: none;" target="_blank">マスメン画面サンプル</a>
-<a href="https://github.com/kodaimura/masmaint-sample/tree/main/sample" target="_blank">DDLサンプル</a>
+<div>
+    <a href="https://masmaint-sample.carkodr.com/mastertables" target="_blank">マスメン画面サンプル</a>
+</div>
+<div>
+    <a href="https://github.com/kodaimura/masmaint-sample/tree/main/sample" target="_blank">DDLサンプル</a>
+</div>
 <hr>
 <div class="row">
 	<div class="col-4">
@@ -15,22 +19,23 @@
 		<select class="form-select" id="rdbms">
 			<option value="postgresql" selected>PostgreSQL</option>
 			<option value="mysql">MySQL</option>
-			<option value="sqlite>=3.35.0">SQLite 3.35.0~</option>
+			<option value="sqlite3">SQLite3</option>
 		</select>
 	</div>
 </div>
-<div class="row align-items-center mt-3">
+<div class="row mt-3">
 	<div class="col-8">
+        <label>DDLファイル （拡張子 .sql）</label>
 		<div class="input-group mb-1">
 			<input type="file" class="form-control" id="ddl" accept=".sql">
 		</div>
 	</div>
-	<div class="col-auto align-self-start">
-		<button type="button" class="btn btn-primary" id="generate">生成</button>
-	</div>
 </div>
-&nbsp;&nbsp;&nbsp;
-
+<div class="row">
+    <div class="col-8 text-end">
+        <button type="button" class="btn btn-primary" id="generate">生成</button>
+    </div>
+</div>
 <div id="message" class="overflow-auto" style="max-height: 50vh;"></div>
 <script type="text/javascript" src="/js/index.js"></script>
 {{template "footer" .}}
