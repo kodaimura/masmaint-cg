@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {{template "head" .}}
+    <link rel="manifest" href="manifest.json" />
+</head>
+
+<body>
+    {{template "header" .}}
+    <div class="container-fluid">
+        {{template "menu" .}}
+        <main>
+            <div class="w-100 px-3 py-3"></div>
+        </main>
+    </div>
+    {{template "modal" .}}
+    {{template "footer" .}}
+</body>
+
+</html>
