@@ -127,6 +127,9 @@ func (gen *generator) generateInternal(path string) error {
 	if err := gen.generateModule(path); err != nil {
 		return err
 	}
+	if err := gen.generateServer(path); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -746,6 +749,84 @@ func (gen *generator)codeServiceDelete(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	return fmt.Sprintf(FORMAT_SERVICE_DELETE, tnp) 
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  internal/server  //////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// server 生成
+func (gen *generator) generateServer(path string) error {
+	path = fmt.Sprintf("%s/server", path)
+	if err := MakeDirAll(path); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	if err := gen.generateRouterGoFile(path); err != nil {
+		return err
+	}
+	return nil
+}
+
+// router.go 生成
+func (gen *generator) generateRouterGoFile(path string) error {
+	path = fmt.Sprintf("%s/router.go", path)
+	code := gen.codeRouterGo()
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+// router.go コード生成
+func (gen *generator) codeRouterGo() string {
+	return fmt.Sprintf(
+		FORMAT_ROUTER, 
+		gen.CodeRouterSetWebRouter(),
+		gen.CodeRouterSetApiRouter(),
+	)
+}
+
+func (gen *generator) CodeRouterSetWebRouter() string {
+	s1 := ""
+	for _, table := range gen.tables {
+		tn := strings.ToLower(table.Name)
+		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tn, tn)
+	}
+	s1 = strings.TrimSuffix(s1, "\n")
+	s2 := ""
+	for _, table := range gen.tables {
+		tn := strings.ToLower(table.Name)
+		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.GetPage)\n", tn, tn)
+	}
+	s2 = strings.TrimSuffix(s2, "\n")
+	return fmt.Sprintf(
+		FORMAT_ROUTER_SETWEB, 
+		s1, s2,
+	)
+}
+
+func (gen *generator) CodeRouterSetApiRouter() string {
+	s1 := ""
+	for _, table := range gen.tables {
+		tn := strings.ToLower(table.Name)
+		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tn, tn)
+	}
+	s1 = strings.TrimSuffix(s1, "\n")
+	s2 := ""
+	for _, table := range gen.tables {
+		tn := strings.ToLower(table.Name)
+		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.Get)\n", tn, tn)
+		s2 += fmt.Sprintf("\t\tauth.POST(\"/%s\", %sController.Post)\n", tn, tn)
+		s2 += fmt.Sprintf("\t\tauth.PUT(\"/%s\", %sController.Put)\n", tn, tn)
+		s2 += fmt.Sprintf("\t\tauth.DELETE(\"/%s\", %sController.Delete)\n\n", tn, tn)
+	}
+	s2 = strings.TrimSuffix(s2, "\n\n")
+	return fmt.Sprintf(
+		FORMAT_ROUTER_SETAPI, 
+		s1, s2,
+	)
 }
 
 /////////////////////////////////////////////////////////////////////////////////

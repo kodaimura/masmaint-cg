@@ -383,6 +383,72 @@ const FORMAT_SERVICE_DELETE =
 	return nil
 }`
 
+const FORMAT_ROUTER =
+`package server
+
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"masmaint/config"
+	"masmaint/internal/core/jwt"
+	"masmaint/internal/middleware"
+
+	"masmaint/internal/module/employee"
+	"masmaint/internal/module/department"
+)
+
+/*
+ Routing for "/" 
+*/
+%s
+
+
+%s`
+
+const FORMAT_ROUTER_SETWEB =
+`func SetWebRouter(r *gin.RouterGroup) {
+%s
+
+	r.GET("/login", func(c *gin.Context) { c.HTML(200, "login.html", gin.H{}) })
+
+	auth := r.Group("", middleware.JwtAuthMiddleware())
+	{
+		auth.GET("/", func(c *gin.Context) { c.HTML(200, "index.html", gin.H{}) })
+%s
+	}
+}`
+
+const FORMAT_ROUTER_SETAPI =
+`func SetApiRouter(r *gin.RouterGroup) {
+	r.Use(middleware.ApiResponseMiddleware())
+
+%s
+
+	//カスタム推奨
+	r.POST("/login", func(c *gin.Context) { 
+		var body map[string]string
+		c.ShouldBindJSON(&body)
+		name := body["username"]
+		pass := body["password"]
+		fmt.Println(name)
+
+		fmt.Println(pass)
+
+		cf := config.GetConfig()
+		if name == cf.AuthUser && pass == cf.AuthPass {
+			cc := jwt.CustomClaims{ AccountId: 1, AccountName: name}
+			jwt.SetTokenToCookie(c, jwt.NewPayload(cc))
+		} else {
+			c.JSON(401, gin.H{"error": "ユーザ名またはパスワードが異なります。"})
+		}
+	})
+
+	auth := r.Group("", middleware.JwtAuthApiMiddleware())
+	{
+%s
+	}
+}`
+
 var FORMAT_JS = ReadFile("_template/js_format.txt")
 
 const FORMAT_JS_CREATETRNEW =
