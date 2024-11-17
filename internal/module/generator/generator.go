@@ -40,7 +40,7 @@ func (gen *generator) Generate() (string, error) {
 		return "", err
 	}
 	filename, err := gen.zipWorkDir(dir)
-	if err := gen.generateSource(path); err != nil {
+	if err != nil {
 		return "", err
 	}
 	return filename, nil
@@ -53,7 +53,7 @@ func (gen *generator) createWorkDir() (string, string, error) {
 		utils.RandomString(10),
 	)
 	path := fmt.Sprintf("%s/%s", gen.output, dir)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return "", "", err
 	}
@@ -81,10 +81,13 @@ func (gen *generator) zipWorkDir(dir string) (string, error) {
 	return zip, nil
 }
 
-// Goソース生成
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////  生成処理  ///////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
 func (gen *generator) generateSource(path string) error {
 	path = fmt.Sprintf("%s/masmaint", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -100,7 +103,6 @@ func (gen *generator) generateSource(path string) error {
 	return nil	
 }
 
-// templateコピー
 func (gen *generator) copyTemplate(path string) error {
 	origin := "_template/masmaint"
 
@@ -111,14 +113,14 @@ func (gen *generator) copyTemplate(path string) error {
 	return nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////  internalコード生成  //////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////  internal  //////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-// internal生成
+// internal 生成
 func (gen *generator) generateInternal(path string) error {
 	path = fmt.Sprintf("%s/internal", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -128,10 +130,14 @@ func (gen *generator) generateInternal(path string) error {
 	return nil
 }
 
-// module生成
+/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  internal/module  //////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// module 生成
 func (gen *generator) generateModule(path string) error {
 	path = fmt.Sprintf("%s/module", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -154,7 +160,7 @@ func (gen *generator) generateModulesPerTable(path string) error {
 func (gen *generator) generateTableModule(path string, table ddlparse.Table) error {
 	tn := strings.ToLower(table.Name)
 	path = fmt.Sprintf("%s/%s", path, tn)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -175,16 +181,20 @@ func (gen *generator) generateTableModuleFiles(path string, table ddlparse.Table
 	if err := gen.generateRequestFile(path, table); err != nil {
 		return err
 	}
-	if err := gen.generateRepositoryFile(path, table); err != nil {
+	if err := gen.generateServiceFile(path, table); err != nil {
 		return err
 	}
-	if err := gen.generateServiceFile(path, table); err != nil {
+	if err := gen.generateRepositoryFile(path, table); err != nil {
 		return err
 	}
 	return nil
 }
 
-// controller.go生成
+/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  controller.go  ////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// controller.go 生成
 func (gen *generator) generateControllerFile(path string, table ddlparse.Table) error {
 	path = fmt.Sprintf("%s/controller.go", path)
 	code := gen.codeController(table)
@@ -195,7 +205,20 @@ func (gen *generator) generateControllerFile(path string, table ddlparse.Table) 
 	return nil
 }
 
-// model.go生成
+// controller.go コード生成
+func (gen *generator) codeController(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	return fmt.Sprintf(
+		FORMAT_CONTROLLER, 
+		tn, tn, tn, tn, tn, tn, tn,
+	)
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////  model.go  //////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// model.go 生成
 func (gen *generator) generateModelFile(path string, table ddlparse.Table) error {
 	path = fmt.Sprintf("%s/model.go", path)
 	code := gen.codeModel(table)
@@ -204,194 +227,6 @@ func (gen *generator) generateModelFile(path string, table ddlparse.Table) error
 		return err
 	}
 	return nil
-}
-
-// request.go生成
-func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
-	path = fmt.Sprintf("%s/request.go", path)
-	code := gen.codeRequest(table)
-	if err := WriteFile(path, code); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	return nil
-}
-
-// repository.go生成
-func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
-	path = fmt.Sprintf("%s/repository.go", path)
-	code := gen.codeRepository(table)
-	if err := WriteFile(path, code); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	return nil
-}
-
-// service.go生成
-func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
-	path = fmt.Sprintf("%s/service.go", path)
-	code := gen.codeService(table)
-	if err := WriteFile(path, code); err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	return nil
-}
-
-////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////  コード生成用共通  ///////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-// カラム名 -> Goフィールド名
-func (gen *generator) getFieldName(columnName, tableName string) string {
-	cn := strings.ToLower(columnName)
-	tn := strings.ToLower(tableName)
-	pf := tn + "_"
-	if (strings.HasPrefix(cn, pf)) {
-		cn = cn[len(pf):]
-	}
-	return SnakeToPascal(cn)
-}
-
-// データ型 -> Goデータ型
-func (gen *generator) dataTypeToGoType(dataType string) string {
-	dataType = strings.ToUpper(dataType)
-
-	if (strings.Contains(dataType, "INT") || strings.Contains(dataType, "BIT") || strings.Contains(dataType, "SERIAL")) {
-		return "int"
-	} else if strings.Contains(dataType, "NUMERIC") ||
-		strings.Contains(dataType, "DECIMAL") ||
-		strings.Contains(dataType, "FLOAT") ||
-		strings.Contains(dataType, "REAL") ||
-		strings.Contains(dataType, "DOUBLE") {
-		return "float64"
-	} else {
-		return "string"
-	}
-}
-
-// Null許容のカラムか判定
-func (gen *generator) isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
-	if (column.Constraint.IsNotNull) {
-		return false
-	}
-	if (column.Constraint.IsPrimaryKey) {
-		return false
-	}
-	if (column.Constraint.IsAutoincrement) {
-		return false
-	}
-
-	for _, pk := range constraints.PrimaryKey {
-		for _, name := range pk.ColumnNames {
-			if (column.Name == name) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-// INSERTで指定するカラムか判定
-func (gen *generator)isInsertColumn(c ddlparse.Column) bool {
-	if c.Constraint.IsAutoincrement {
-		return false
-	}
-	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-		return false
-	}
-	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-		return false
-	}
-	return true
-}
-
-// UPDATEで指定するカラムか判定
-func (gen *generator)isUpdateColumn(c ddlparse.Column) bool {
-	if c.Constraint.IsAutoincrement {
-		return false
-	}
-	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-		return false
-	}
-	if c.Constraint.IsPrimaryKey {
-		return false
-	}
-	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
-		return false
-	}
-	return true
-}
-
-// INSERTするカラムのリストを取得
-func (gen *generator)getInsertColumns(table ddlparse.Table) []ddlparse.Column {
-	ret := []ddlparse.Column{}
-	for _, c := range table.Columns {
-		if gen.isInsertColumn(c) {
-			ret = append(ret, c)
-		}	
-	}
-	return ret
-}
-
-// UPDATEするカラムのリストを取得
-func (gen *generator)getUpdateColumns(table ddlparse.Table) []ddlparse.Column {
-	ret := []ddlparse.Column{}
-	for _, c := range table.Columns {
-		if gen.isUpdateColumn(c) {
-			ret = append(ret, c)
-		}	
-	}
-	return ret
-}
-
-// 主キーカラムのリストを取得
-func (gen *generator)getPrimaryKeyColumns(table ddlparse.Table) []ddlparse.Column {
-	pkcols := []string{}
-	for _, pk := range table.Constraints.PrimaryKey {
-		for _, name := range pk.ColumnNames {
-			pkcols = append(pkcols, name)
-		}
-	}
-
-	names := []string{}
-	ret := []ddlparse.Column{}
-	for _, c := range table.Columns {
-		if c.Constraint.IsPrimaryKey || Contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
-			if !Contains(names, c.Name) {
-				names = append(names, c.Name)
-				ret = append(ret, c)
-			}
-		}
-	}
-	return ret
-}
-
-// AUTO_INCREMENTのカラムを取得（1つ以下である前提）
-func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
-	for _, c := range table.Columns {
-		if c.Constraint.IsAutoincrement {
-			return c, true
-		}
-		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
-			return c, true
-		}
-	}
-	return ddlparse.Column{}, false
-}
-
-////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////  moduleコード生成  //////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
-
-// controller.go コード生成
-func (gen *generator) codeController(table ddlparse.Table) string {
-	tn := strings.ToLower(table.Name)
-	return fmt.Sprintf(
-		FORMAT_CONTROLLER, 
-		tn, tn, tn, tn, tn, tn, tn,
-	)
 }
 
 // model.go コード生成
@@ -414,6 +249,21 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 		FORMAT_MODEL, 
 		tn, tnp, fields,
 	)
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////  request.go  /////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// request.go 生成
+func (gen *generator) generateRequestFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/request.go", path)
+	code := gen.codeRequest(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // request.go コード生成
@@ -487,21 +337,31 @@ func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	return strings.TrimSuffix(code, "\n")
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////  repository.go  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// repository.go 生成
+func (gen *generator)generateRepositoryFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/repository.go", path)
+	code := gen.codeRepository(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
 // repository.go コード生成
 func (gen *generator)codeRepository(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
-	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY,
-		tn, tnp, 
-		tni, tnp, tnp, 
-		tni, tnp, tnp, 
-		tni, tnp,  gen.codeRepositoryInsertReturnType(table),
-		tni, tnp, 
-		tni, tnp, 
+		FORMAT_REPOSITORY,
+		tn,
+		gen.codeRepositoryInterface(table),
 		tnc, tnp, tnp, tnc,
 		gen.codeRepositoryGet(table),
 		gen.codeRepositoryGetOne(table),
@@ -511,12 +371,26 @@ func (gen *generator)codeRepository(table ddlparse.Table) string {
 	)
 }
 
-func (gen *generator)codeRepositoryInsertReturnType(table ddlparse.Table) string {
+func (gen *generator)codeRepositoryInterface(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+	tni := GetSnakeInitial(tn)
 	aicol, found := gen.getAutoIncrementColumn(table)
+
+	retType := "error"
 	if found {
-		return fmt.Sprintf("(%s, error)", gen.dataTypeToGoType(aicol.DataType.Name))
+		retType = fmt.Sprintf("(%s, error)", gen.dataTypeToGoType(aicol.DataType.Name))
 	}
-	return "error"
+
+	return fmt.Sprintf(
+		FORMAT_REPOSITORY_INTERFACE,
+		tnp, 
+		tni, tnp, tnp, 
+		tni, tnp, tnp, 
+		tni, tnp, retType,
+		tni, tnp, 
+		tni, tnp,
+	)
 }
 
 func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
@@ -542,7 +416,7 @@ func (gen *generator)codeRepositoryGet(table ddlparse.Table) string {
 	scan += "\t\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_GET,
+		FORMAT_REPOSITORY_GET,
 		tnc, tni, tnp, tnp, tni, 
 		query,
 		tnp, tnp, tni, tnp,
@@ -574,7 +448,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	scan += "\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_GETONE,
+		FORMAT_REPOSITORY_GETONE,
 		tnc, tni, tnp, tnp, tnp, tni, 
 		query, scan,
 	) 
@@ -634,7 +508,7 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_INSERT,
+		FORMAT_REPOSITORY_INSERT,
 		tnc, tni, tnp,
 		query, binds,
 	) 
@@ -670,7 +544,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_INSERT_AI,
+		FORMAT_REPOSITORY_INSERT_AI,
 		tnc, tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
@@ -707,7 +581,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_INSERT_AI_MYSQL,
+		FORMAT_REPOSITORY_INSERT_AI_MYSQL,
 		tnc, tni, tnp,
 		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
@@ -751,7 +625,7 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	binds += "\t"
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_UPDATE,
+		FORMAT_REPOSITORY_UPDATE,
 		tnc, tni, tnp,
 		query, binds,
 	) 
@@ -764,9 +638,24 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tni := GetSnakeInitial(tn)
 
 	return fmt.Sprintf(
-		FORMAT_REQPOSITORY_DELETE, 
+		FORMAT_REPOSITORY_DELETE, 
 		tnc, tni, tnp, tni, tn,
 	) 
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////  service.go  /////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// service.go 生成
+func (gen *generator) generateServiceFile(path string, table ddlparse.Table) error {
+	path = fmt.Sprintf("%s/service.go", path)
+	code := gen.codeService(table)
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 // service.go コード生成
@@ -860,14 +749,14 @@ func (gen *generator)codeServiceDelete(table ddlparse.Table) string {
 	return fmt.Sprintf(FORMAT_SERVICE_DELETE, tnp) 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////  webコード生成  ////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////  web  ////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-// web生成
+// web 生成
 func (gen *generator) generateWeb(path string) error {
 	path = fmt.Sprintf("%s/web", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -880,14 +769,14 @@ func (gen *generator) generateWeb(path string) error {
 	return nil
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////  staticコード生成  ///////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////  web/static  /////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-// static生成
+// static 生成
 func (gen *generator) generateStatic(path string) error {
 	path = fmt.Sprintf("%s/static", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -897,10 +786,14 @@ func (gen *generator) generateStatic(path string) error {
 	return nil
 }
 
-// js生成
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////  web/static/js  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// js 生成
 func (gen *generator) generateJs(path string) error {
 	path = fmt.Sprintf("%s/js", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -919,7 +812,7 @@ func (gen *generator) generateJsFiles(path string) error {
 	return nil
 }
 
-// js/:table_name.js生成
+// js/:table_name.js 生成
 func (gen *generator) generateJsFile(path string, table ddlparse.Table) error {
 	tn := strings.ToLower(table.Name)
 	path = fmt.Sprintf("%s/%s.js", path, tn)
@@ -1079,14 +972,14 @@ func (gen *generator) codeJsDeleteRows(table ddlparse.Table) string {
 	)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////  templateコード生成  /////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////  web/template  ////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
 // template生成
 func (gen *generator) generateTemplate(path string) error {
 	path = fmt.Sprintf("%s/template", path)
-	if err := os.MkdirAll(path, 0777); err != nil {
+	if err := MakeDirAll(path); err != nil {
 		logger.Error(err.Error())
 		return err
 	}
@@ -1159,4 +1052,146 @@ func (gen *generator) codeTemplate(table ddlparse.Table) string {
 		FORMAT_TEMPLATE, 
 		tn, s1, tn,
 	)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////  コード生成用共通  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// カラム名 -> Goフィールド名
+func (gen *generator) getFieldName(columnName, tableName string) string {
+	cn := strings.ToLower(columnName)
+	tn := strings.ToLower(tableName)
+	pf := tn + "_"
+	if (strings.HasPrefix(cn, pf)) {
+		cn = cn[len(pf):]
+	}
+	return SnakeToPascal(cn)
+}
+
+// データ型 -> Goデータ型
+func (gen *generator) dataTypeToGoType(dataType string) string {
+	dataType = strings.ToUpper(dataType)
+
+	if (strings.Contains(dataType, "INT") || strings.Contains(dataType, "BIT") || strings.Contains(dataType, "SERIAL")) {
+		return "int"
+	} else if strings.Contains(dataType, "NUMERIC") ||
+		strings.Contains(dataType, "DECIMAL") ||
+		strings.Contains(dataType, "FLOAT") ||
+		strings.Contains(dataType, "REAL") ||
+		strings.Contains(dataType, "DOUBLE") {
+		return "float64"
+	} else {
+		return "string"
+	}
+}
+
+// Null許容のカラムか判定
+func (gen *generator) isNullColumn(column ddlparse.Column, constraints ddlparse.TableConstraint) bool {
+	if (column.Constraint.IsNotNull) {
+		return false
+	}
+	if (column.Constraint.IsPrimaryKey) {
+		return false
+	}
+	if (column.Constraint.IsAutoincrement) {
+		return false
+	}
+
+	for _, pk := range constraints.PrimaryKey {
+		for _, name := range pk.ColumnNames {
+			if (column.Name == name) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// INSERTで指定するカラムか判定
+func (gen *generator)isInsertColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+	return true
+}
+
+// UPDATEで指定するカラムか判定
+func (gen *generator)isUpdateColumn(c ddlparse.Column) bool {
+	if c.Constraint.IsAutoincrement {
+		return false
+	}
+	if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+		return false
+	}
+	if c.Constraint.IsPrimaryKey {
+		return false
+	}
+	if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
+		return false
+	}
+	return true
+}
+
+// INSERTするカラムのリストを取得
+func (gen *generator)getInsertColumns(table ddlparse.Table) []ddlparse.Column {
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if gen.isInsertColumn(c) {
+			ret = append(ret, c)
+		}	
+	}
+	return ret
+}
+
+// UPDATEするカラムのリストを取得
+func (gen *generator)getUpdateColumns(table ddlparse.Table) []ddlparse.Column {
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if gen.isUpdateColumn(c) {
+			ret = append(ret, c)
+		}	
+	}
+	return ret
+}
+
+// 主キーカラムのリストを取得
+func (gen *generator)getPrimaryKeyColumns(table ddlparse.Table) []ddlparse.Column {
+	pkcols := []string{}
+	for _, pk := range table.Constraints.PrimaryKey {
+		for _, name := range pk.ColumnNames {
+			pkcols = append(pkcols, name)
+		}
+	}
+
+	names := []string{}
+	ret := []ddlparse.Column{}
+	for _, c := range table.Columns {
+		if c.Constraint.IsPrimaryKey || Contains(pkcols, c.Name) || strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL"){
+			if !Contains(names, c.Name) {
+				names = append(names, c.Name)
+				ret = append(ret, c)
+			}
+		}
+	}
+	return ret
+}
+
+// AUTO_INCREMENTのカラムを取得（1つ以下である前提）
+func (gen *generator)getAutoIncrementColumn(table ddlparse.Table) (ddlparse.Column, bool) {
+	for _, c := range table.Columns {
+		if c.Constraint.IsAutoincrement {
+			return c, true
+		}
+		if strings.Contains(strings.ToUpper(c.DataType.Name), "SERIAL") {
+			return c, true
+		}
+	}
+	return ddlparse.Column{}, false
 }

@@ -23,6 +23,13 @@ func WriteFile(path, content string) error {
 	return nil
 }
 
+func MakeDirAll(path string) error {
+	if err := os.MkdirAll(path, 0777); err != nil {
+		return err
+	}
+	return nil
+}
+
 
 func CopyFile(source string, destination string) error {
 	src, err := os.Open(source)

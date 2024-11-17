@@ -114,7 +114,7 @@ type DeleteBody struct {
 `
 
 
-const FORMAT_REQPOSITORY = 
+const FORMAT_REPOSITORY = 
 `package %s
 
 import (
@@ -123,13 +123,7 @@ import (
 )
 
 
-type %sRepository interface {
-	Get(%s *model.%s) ([]model.%s, error)
-	GetOne(%s *model.%s) (model.%s, error)
-	Insert(%s *model.%s, tx *sql.Tx) %s
-	Update(%s *model.%s, tx *sql.Tx) error
-	Delete(%s *model.%s, tx *sql.Tx) error
-}
+%s
 
 
 type %sRepository struct {
@@ -156,7 +150,16 @@ func New%sRepository() %sRepository {
 
 %s`
 
-const FORMAT_REQPOSITORY_GET =
+const FORMAT_REPOSITORY_INTERFACE =
+`type %sRepository interface {
+	Get(%s *model.%s) ([]model.%s, error)
+	GetOne(%s *model.%s) (model.%s, error)
+	Insert(%s *model.%s, tx *sql.Tx) %s
+	Update(%s *model.%s, tx *sql.Tx) error
+	Delete(%s *model.%s, tx *sql.Tx) error
+}`
+
+const FORMAT_REPOSITORY_GET =
 `func (rep *%sRepository) Get(%s *model.%s) ([]model.%s, error) {
 	where, binds := db.BuildWhereClause(%s)
 	query := %s + where
@@ -180,7 +183,7 @@ const FORMAT_REQPOSITORY_GET =
 	return ret, nil
 }`
 
-const FORMAT_REQPOSITORY_GETONE =
+const FORMAT_REPOSITORY_GETONE =
 `func (rep *%sRepository) GetOne(%s *model.%s) (model.%s, error) {
 	var ret model.%s
 	where, binds := db.BuildWhereClause(%s)
@@ -191,7 +194,7 @@ const FORMAT_REQPOSITORY_GETONE =
 	return ret, err
 }`
 
-const FORMAT_REQPOSITORY_INSERT =
+const FORMAT_REPOSITORY_INSERT =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -206,7 +209,7 @@ const FORMAT_REQPOSITORY_INSERT =
 	return err
 }`
 
-const FORMAT_REQPOSITORY_INSERT_AI =
+const FORMAT_REPOSITORY_INSERT_AI =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -222,7 +225,7 @@ const FORMAT_REQPOSITORY_INSERT_AI =
 	return %s, err
 }`
 
-const FORMAT_REQPOSITORY_INSERT_AI_MYSQL =
+const FORMAT_REPOSITORY_INSERT_AI_MYSQL =
 `func (rep *%sRepository) Insert(%s *model.%s, tx *sql.Tx) (int, error) {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -248,7 +251,7 @@ const FORMAT_REQPOSITORY_INSERT_AI_MYSQL =
 	return %s, err
 }`
 
-const FORMAT_REQPOSITORY_UPDATE =
+const FORMAT_REPOSITORY_UPDATE =
 `func (rep *%sRepository) Update(%s *model.%s, tx *sql.Tx) error {
 	cmd := %s
 	binds := []interface{}{%s}
@@ -263,7 +266,7 @@ const FORMAT_REQPOSITORY_UPDATE =
 	return err
 }`
 
-const FORMAT_REQPOSITORY_DELETE =
+const FORMAT_REPOSITORY_DELETE =
 `func (rep *%sRepository) Delete(%s *model.%s, tx *sql.Tx) error {
 	where, binds := db.BuildWhereClause(%s)
 	cmd := "DELETE FROM %s " + where
