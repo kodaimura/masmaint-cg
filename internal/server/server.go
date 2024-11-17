@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"masmaint-cg/config"
-	"masmaint-cg/internal/controller"
 )
 
 func Run() {
@@ -22,10 +21,9 @@ func router() *gin.Engine {
 	//STATIC
 	r.Static("/css", "web/static/css")
 	r.Static("/js", "web/static/js")
-	r.Static("/sample", "web/static/sample")
 	r.Static("/output", "./output")
 
-	controller.SetRouter(r)
+	SetRouter(r)
 
 	return r
 }
