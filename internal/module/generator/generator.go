@@ -39,7 +39,11 @@ func (gen *generator) Generate() (string, error) {
 	if err := gen.generateSource(path); err != nil {
 		return "", err
 	}
-	return gen.zipWorkDir(dir)
+	filename, err := gen.zipWorkDir(dir)
+	if err := gen.generateSource(path); err != nil {
+		return "", err
+	}
+	return filename, nil
 }
 
 func (gen *generator) createWorkDir() (string, string, error) {
@@ -93,7 +97,6 @@ func (gen *generator) generateSource(path string) error {
 	if err := gen.generateWeb(path); err != nil {
 		return err
 	}
-
 	return nil	
 }
 
@@ -132,7 +135,10 @@ func (gen *generator) generateModule(path string) error {
 		logger.Error(err.Error())
 		return err
 	}
-	return gen.generateModulesPerTable(path)
+	if err := gen.generateModulesPerTable(path); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (gen *generator) generateModulesPerTable(path string) error {
@@ -152,7 +158,10 @@ func (gen *generator) generateTableModule(path string, table ddlparse.Table) err
 		logger.Error(err.Error())
 		return err
 	}
-	return gen.generateTableModuleFiles(path, table)
+	if err := gen.generateTableModuleFiles(path, table); err != nil {
+		return err
+	}
+	return nil
 }
 
 // module/:table_name内のファイル生成
@@ -567,8 +576,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQPOSITORY_FORMAT_GETONE,
 		tnc, tni, tnp, tnp, tnp, tni, 
-		query,
-		scan,
+		query, scan,
 	) 
 }
 
@@ -628,8 +636,7 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQPOSITORY_FORMAT_INSERT,
 		tnc, tni, tnp,
-		query,
-		binds,
+		query, binds,
 	) 
 }
 
@@ -665,8 +672,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQPOSITORY_FORMAT_INSERT_AI,
 		tnc, tni, tnp,
-		query,
-		binds,
+		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
 	) 
 }
@@ -703,8 +709,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQPOSITORY_FORMAT_INSERT_AI_MYSQL,
 		tnc, tni, tnp,
-		query,
-		binds,
+		query, binds,
 		aicnc, aicnc, aicnc, aicnc,
 	) 
 }
@@ -748,8 +753,7 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	return fmt.Sprintf(
 		REQPOSITORY_FORMAT_UPDATE,
 		tnc, tni, tnp,
-		query,
-		binds,
+		query, binds,
 	) 
 }
 
@@ -759,7 +763,10 @@ func (gen *generator)codeRepositoryDelete(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
 
-	return fmt.Sprintf(REQPOSITORY_FORMAT_DELETE, tnc, tni, tnp, tni, tn) 
+	return fmt.Sprintf(
+		REQPOSITORY_FORMAT_DELETE, 
+		tnc, tni, tnp, tni, tn,
+	) 
 }
 
 // service.go コード生成
@@ -768,11 +775,22 @@ func (gen *generator) codeService(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 	return fmt.Sprintf(
 		SERVICE_FORMAT, 
-		tn, tnp, tnp, tnp, tnp, tnp, tnp,
+		tn, tnp, tnp, tnp,
+		gen.codeServiceGet(table),
 		gen.codeServiceCreate(table),
 		gen.codeServiceUpdate(table),
-		tnp,
+		gen.codeServiceDelete(table),
 	)
+}
+
+func (gen *generator)codeServiceGet(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+
+	return fmt.Sprintf(
+		SERVICE_FORMAT_GET,
+		tnp, tnp, tnp,
+	) 
 }
 
 func (gen *generator)codeServiceCreate(table ddlparse.Table) string {
@@ -787,18 +805,18 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
 
-	fields := ""
+	s1 := ""
 	for i, c := range gen.getPrimaryKeyColumns(table) {
 		if i > 0 {
-			fields += ", "
+			s1 += ", "
 		} 
 		fn := gen.getFieldName(c.Name ,tn)
-		fields += fmt.Sprintf("%s: input.%s", fn, fn)
+		s1 += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
 	return fmt.Sprintf(
 		SERVICE_FORMAT_CREATE,
-		tnp, tnp, tnp, tnp, fields,
+		tnp, tnp, tnp, tnp, s1,
 	) 
 }
 
@@ -820,19 +838,26 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
 
-	fields := ""
+	s1 := ""
 	for i, c := range gen.getPrimaryKeyColumns(table) {
 		if i > 0 {
-			fields += ", "
+			s1 += ", "
 		} 
 		fn := gen.getFieldName(c.Name ,tn)
-		fields += fmt.Sprintf("%s: input.%s", fn, fn)
+		s1 += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
 	return fmt.Sprintf(
 		SERVICE_FORMAT_UPDATE,
-		tnp, tnp, tnp, tnp, fields,
+		tnp, tnp, tnp, tnp, s1,
 	) 
+}
+
+func (gen *generator)codeServiceDelete(table ddlparse.Table) string {
+	tn := strings.ToLower(table.Name)
+	tnp := SnakeToPascal(tn)
+
+	return fmt.Sprintf(SERVICE_FORMAT_DELETE, tnp) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,7 +904,10 @@ func (gen *generator) generateJs(path string) error {
 		logger.Error(err.Error())
 		return err
 	}
-	return gen.generateJsFiles(path)
+	if err := gen.generateJsFiles(path); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (gen *generator) generateJsFiles(path string) error {
@@ -1065,7 +1093,10 @@ func (gen *generator) generateTemplate(path string) error {
 	if err := gen.generateTemplateMenuFile(path); err != nil {
 		return err
 	}
-	return gen.generateTemplateFiles(path)
+	if err := gen.generateTemplateFiles(path); err != nil {
+		return err
+	}
+	return nil
 }
 
 // template/_menu.html生成

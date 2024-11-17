@@ -304,32 +304,25 @@ func NewService() Service {
 }
 
 
-func (srv *service) Get() ([]%s, error) {
+%s
+
+
+%s
+
+
+%s
+
+
+%s`
+
+const SERVICE_FORMAT_GET =
+`func (srv *service) Get() ([]%s, error) {
 	rows, err := srv.repository.Get(&%s{})
 	if err != nil {
 		logger.Error(err.Error())
 		return []%s{}, err
 	}
 	return rows, nil
-}
-
-
-%s
-
-
-%s
-
-
-func (srv *service) Delete(input DeleteBody) error {
-	var model %s
-	utils.MapFields(&model, input)
-
-	err := srv.repository.Delete(&model, nil)
-	if err != nil {
-		logger.Error(err.Error())
-		return err
-	}
-	return nil
 }`
 
 const SERVICE_FORMAT_CREATE =
@@ -372,6 +365,19 @@ const SERVICE_FORMAT_UPDATE =
 	}
 
 	return srv.repository.GetOne(&%s{ %s })
+}`
+
+const SERVICE_FORMAT_DELETE =
+`func (srv *service) Delete(input DeleteBody) error {
+	var model %s
+	utils.MapFields(&model, input)
+
+	err := srv.repository.Delete(&model, nil)
+	if err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
 }`
 
 var JS_FORMAT = ReadFile("_template/js_format.txt")
