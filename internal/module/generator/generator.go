@@ -117,6 +117,9 @@ func (gen *generator) generateSource(path string) error {
 	if err := gen.generateWeb(path); err != nil {
 		return err
 	}
+	if err := gen.generateScripts(path); err != nil {
+		return err
+	}
 	return nil	
 }
 
@@ -1149,6 +1152,38 @@ func (gen *generator) codeTableHtml(table ddlparse.Table) string {
 		FORMAT_TEMPLATE, 
 		tn, s1, tn,
 	)
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////  scripts  //////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// scripts 生成
+func (gen *generator) generateScripts(path string) error {
+	path = fmt.Sprintf("%s/scripts", path)
+	if err := MakeDirAll(path); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	if err := gen.generateCreateTableSqlFile(path); err != nil {
+		return err
+	}
+	return nil
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////  create-table.sql  ///////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+
+// create-table.sql 生成
+func (gen *generator) generateCreateTableSqlFile(path string) error {
+	path = fmt.Sprintf("%s/create-table.sql", path)
+	code := gen.ddl
+	if err := WriteFile(path, code); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
