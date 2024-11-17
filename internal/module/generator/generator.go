@@ -503,9 +503,9 @@ func (gen *generator)codeRepository(table ddlparse.Table) string {
 }
 
 func (gen *generator)codeRepositoryInsertReturnType(table ddlparse.Table) string {
-	aiColumn, found := gen.getAutoIncrementColumn(table)
+	aicol, found := gen.getAutoIncrementColumn(table)
 	if found {
-		return fmt.Sprintf("(%s, error)", gen.dataTypeToGoType(aiColumn.DataType.Name))
+		return fmt.Sprintf("(%s, error)", gen.dataTypeToGoType(aicol.DataType.Name))
 	}
 	return "error"
 }
@@ -605,11 +605,11 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	insColumns := gen.getInsertColumns(table)
+	inscols := gen.getInsertColumns(table)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for i, c := range insColumns {
+	for i, c := range inscols {
 		bindCount += 1
 		if i == 0 {
 			query += fmt.Sprintf("\n\t\t%s", c.Name)
@@ -620,7 +620,7 @@ func (gen *generator)codeRepositoryInsertNomal(table ddlparse.Table) string {
 	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
-	for _, c := range insColumns {
+	for _, c := range inscols {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
@@ -638,14 +638,14 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	insColumns := gen.getInsertColumns(table)
-	aiColumn, _ := gen.getAutoIncrementColumn(table)
-	aicn := strings.ToLower(aiColumn.Name)
+	inscols := gen.getInsertColumns(table)
+	aicol, _ := gen.getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aicol.Name)
 	aicnc := SnakeToCamel(aicn)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for i, c := range insColumns {
+	for i, c := range inscols {
 		bindCount += 1
 		if i == 0 {
 			query += fmt.Sprintf("\n\t\t%s", c.Name)
@@ -657,7 +657,7 @@ func (gen *generator)codeRepositoryInsertAI(table ddlparse.Table) string {
 	query += fmt.Sprintf("\n\t RETURNING %s`\n", aicn)
 
 	binds := "\n"
-	for _, c := range insColumns {
+	for _, c := range inscols {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
@@ -676,14 +676,14 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	insColumns := gen.getInsertColumns(table)
-	aiColumn, _ := gen.getAutoIncrementColumn(table)
-	aicn := strings.ToLower(aiColumn.Name)
+	inscols := gen.getInsertColumns(table)
+	aicol, _ := gen.getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aicol.Name)
 	aicnc := SnakeToCamel(aicn)
 
 	query := fmt.Sprintf("\n\t`INSERT INTO %s (", tn)
 	bindCount := 0
-	for i, c := range insColumns {
+	for i, c := range inscols {
 		bindCount += 1
 		if i == 0 {
 			query += fmt.Sprintf("\n\t\t%s", c.Name)
@@ -695,7 +695,7 @@ func (gen *generator)codeRepositoryInsertAIMySQL(table ddlparse.Table) string {
 	query += fmt.Sprintf("\n\t ) VALUES(%s)`\n", gen.concatBindVariableWithCommas(bindCount))
 
 	binds := "\n"
-	for _, c := range insColumns {
+	for _, c := range inscols {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
@@ -714,12 +714,12 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	tnc := SnakeToCamel(tn)
 	tnp := SnakeToPascal(tn)
 	tni := GetSnakeInitial(tn)
-	updColumns := gen.getUpdateColumns(table)
-	pkColumns := gen.getPrimaryKeyColumns(table)
+	updcols := gen.getUpdateColumns(table)
+	pkcols := gen.getPrimaryKeyColumns(table)
 
 	bindCount := 0
 	query := fmt.Sprintf("\n\t`UPDATE %s\n\t SET ", tn)
-	for i, c := range updColumns {
+	for i, c := range updcols {
 		bindCount += 1
 		if i > 0 {
 			query += "\t\t,"
@@ -727,7 +727,7 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 		query += fmt.Sprintf("%s = %s\n", c.Name, gen.getBindVar(bindCount))
 	}
 	query += "\t WHERE "
-	for i, c := range pkColumns {
+	for i, c := range pkcols {
 		bindCount += 1
 		if i > 0 {
 			query += "\n\t   AND "
@@ -737,10 +737,10 @@ func (gen *generator)codeRepositoryUpdate(table ddlparse.Table) string {
 	query += "`"
 
 	binds := "\n"
-	for _, c := range updColumns {
+	for _, c := range updcols {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
-	for _, c := range pkColumns {
+	for _, c := range pkcols {
 		binds += fmt.Sprintf("\t\t%s.%s,\n", tni, gen.getFieldName(c.Name ,tn))
 	}
 	binds += "\t"
@@ -805,8 +805,8 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	tnp := SnakeToPascal(tn)
-	aiColumn, _ := gen.getAutoIncrementColumn(table)
-	aicn := strings.ToLower(aiColumn.Name)
+	aicol, _ := gen.getAutoIncrementColumn(table)
+	aicn := strings.ToLower(aicol.Name)
 	aicnc := SnakeToCamel(aicn)
 	fn := gen.getFieldName(aicn ,tn)
 
@@ -960,7 +960,7 @@ func (gen *generator) codeJsGetRows(table ddlparse.Table) string {
 
 func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	updColumns := gen.getUpdateColumns(table)
+	updcols := gen.getUpdateColumns(table)
 	s1 := ""
 	for _, c := range table.Columns {
 		cn := strings.ToLower(c.Name)
@@ -968,19 +968,19 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
-	for _, c := range updColumns {
+	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
 		s2 += fmt.Sprintf("\tconst %s_bk = document.getElementsByName('%s_bk');\n", cn, cn)
 	}
 	s2 = strings.TrimSuffix(s2, "\n")
 	s3 := ""
-	for _, c := range updColumns {
+	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
 		s3 += fmt.Sprintf("\t\t\t'%s': %s[i],\n", cn, cn)
 	}
 	s3 = strings.TrimSuffix(s3, "\n")
 	s4 := ""
-	for _, c := range updColumns {
+	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
 		s4 += fmt.Sprintf("\t\t\t'%s': %s_bk[i],\n", cn, cn)
 	}
@@ -1003,7 +1003,7 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 		cn := strings.ToLower(c.Name)
 		s6 += fmt.Sprintf("\t\t\t\t%s[i].value = data.%s;\n", cn, cn)
 	}
-	for _, c := range updColumns {
+	for _, c := range updcols {
 		cn := strings.ToLower(c.Name)
 		s6 += fmt.Sprintf("\t\t\t\t%s_bk[i].value = data.%s;\n", cn, cn)
 	}
@@ -1017,15 +1017,15 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 
 func (gen *generator) codeJsPostRow(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
-	insColumns := gen.getInsertColumns(table)
+	inscols := gen.getInsertColumns(table)
 	s1 := ""
-	for _, c := range insColumns {
+	for _, c := range inscols {
 		cn := strings.ToLower(c.Name)
 		s1 += fmt.Sprintf("\t\t'%s': document.getElementById('%s_new'),\n", cn, cn)
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
-	for _, c := range insColumns{
+	for _, c := range inscols{
 		cn := strings.ToLower(c.Name)
 		ctype := gen.dataTypeToGoType(c.DataType.Name)
 		if ctype == "int" {
