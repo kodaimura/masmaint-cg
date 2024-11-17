@@ -391,13 +391,13 @@ func (gen *generator)codeModel(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 	
 	fields := ""
-	for _, column := range table.Columns {
-		cn := strings.ToLower(column.Name)
+	for _, c := range table.Columns {
+		cn := strings.ToLower(c.Name)
 		fields += "\t" + gen.getFieldName(cn ,tn) + " ";
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			fields += "*"
 		}
-		fields += gen.dataTypeToGoType(column.DataType.Name) + " "
+		fields += gen.dataTypeToGoType(c.DataType.Name) + " "
 		fields += "`db:\"" + cn + "\" json:\"" + cn + "\"`\n"
 	}
 	fields = strings.TrimSuffix(fields, "\n")
@@ -422,15 +422,15 @@ func (gen *generator)codeRequestPostBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	
 	code := ""
-	for _, column := range gen.getInsertColumns(table) {
-		cn := strings.ToLower(column.Name)
+	for _, c := range gen.getInsertColumns(table) {
+		cn := strings.ToLower(c.Name)
 		code += "\t" + gen.getFieldName(cn ,tn) + " ";
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += "*"
 		}
-		code += gen.dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(c.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += " binding:\"required\"`\n"
 		}
 	}
@@ -441,18 +441,18 @@ func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	
 	code := ""
-	for _, column := range table.Columns {
-		if strings.Contains(column.Name, "_at") || strings.Contains(column.Name, "_AT") {
+	for _, c := range table.Columns {
+		if strings.Contains(c.Name, "_at") || strings.Contains(c.Name, "_AT") {
 			continue
 		}
-		cn := strings.ToLower(column.Name)
+		cn := strings.ToLower(c.Name)
 		code += "\t" + gen.getFieldName(cn ,tn) + " ";
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += "*"
 		}
-		code += gen.dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(c.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += " binding:\"required\"`"
 		}
 		code += "\n"
@@ -463,15 +463,15 @@ func (gen *generator)codeRequestPutBodyFields(table ddlparse.Table) string {
 func (gen *generator)codeRequestDeleteBodyFields(table ddlparse.Table) string {
 	tn := strings.ToLower(table.Name)
 	code := ""
-	for _, column := range gen.getPrimaryKeyColumns(table) {
-		cn := strings.ToLower(column.Name)
+	for _, c := range gen.getPrimaryKeyColumns(table) {
+		cn := strings.ToLower(c.Name)
 		code += "\t" + gen.getFieldName(cn , tn) + " ";
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += "*"
 		}
-		code += gen.dataTypeToGoType(column.DataType.Name) + " "
+		code += gen.dataTypeToGoType(c.DataType.Name) + " "
 		code += "`json:\"" + cn + "\""
-		if gen.isNullColumn(column, table.Constraints) {
+		if gen.isNullColumn(c, table.Constraints) {
 			code += " binding:\"required\"`\n"
 		}
 	}
@@ -788,11 +788,11 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range gen.getPrimaryKeyColumns(table) {
+	for i, c := range gen.getPrimaryKeyColumns(table) {
 		if i > 0 {
 			fields += ", "
 		} 
-		fn := gen.getFieldName(column.Name ,tn)
+		fn := gen.getFieldName(c.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
@@ -821,11 +821,11 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 	tnp := SnakeToPascal(tn)
 
 	fields := ""
-	for i, column := range gen.getPrimaryKeyColumns(table) {
+	for i, c := range gen.getPrimaryKeyColumns(table) {
 		if i > 0 {
 			fields += ", "
 		} 
-		fn := gen.getFieldName(column.Name ,tn)
+		fn := gen.getFieldName(c.Name ,tn)
 		fields += fmt.Sprintf("%s: input.%s", fn, fn)
 	}
 
