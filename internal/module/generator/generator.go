@@ -27,7 +27,7 @@ type Generator interface {
 func NewGenerator(ddl string, rdbms string) (Generator, error) {
 	var tables []ddlparse.Table
 	var err error
-	if (rdbms == "postgres") {
+	if (rdbms == "postgresql") {
 		tables, err = ddlparse.ParsePostgreSQL(ddl)
 	} else if (rdbms == "mysql") {
 		tables, err = ddlparse.ParseMySQL(ddl)
@@ -111,6 +111,9 @@ func (gen *generator) generateSource(path string) error {
 	if err := gen.copyTemplate(path); err != nil {
 		return err
 	}
+	if err := gen.copySomeFiles(path); err != nil {
+		return err
+	}
 	if err := gen.generateInternal(path); err != nil {
 		return err
 	}
@@ -125,6 +128,16 @@ func (gen *generator) generateSource(path string) error {
 
 func (gen *generator) copyTemplate(path string) error {
 	origin := "_template/masmaint"
+
+	if err := CopyDir(origin, path); err != nil {
+		logger.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+func (gen *generator) copySomeFiles(path string) error {
+	origin := fmt.Sprintf("_template/%s", gen.rdbms)
 
 	if err := CopyDir(origin, path); err != nil {
 		logger.Error(err.Error())
@@ -470,7 +483,7 @@ func (gen *generator)codeRepositoryGetOne(table ddlparse.Table) string {
 }
 
 func (gen *generator)getBindVar(n int) string {
-	if gen.rdbms == "postgres" {
+	if gen.rdbms == "postgresql" {
 		return fmt.Sprintf("$%d", n)
 	} else {
 		return "?"

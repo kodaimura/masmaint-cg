@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+    tty: true
+    environment:
+      ENV: local
+    command: sh -c "go mod tidy && go run cmd/masmaint/main.go"
+
+  db:
+    image: postgres:16.1
+    environment:
+      POSTGRES_DB: masmaint
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./scripts:/docker-entrypoint-initdb.d
+      - ./data:/var/lib/postgresql/data 
