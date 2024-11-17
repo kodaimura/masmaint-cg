@@ -4,7 +4,6 @@ import (
 	"io"
 	"bytes"
 	"github.com/gin-gonic/gin"
-	"github.com/kodaimura/ddlparse"
 
 	"masmaint-cg/internal/module/generator"
 )
@@ -48,24 +47,17 @@ func (ctr *RootController) PostGenerate(c *gin.Context) {
 	
 	ddl := buf.String()
 
-	var tables []ddlparse.Table
-	if (rdbms == "postgres") {
-		tables, err = ddlparse.ParsePostgreSQL(ddl)
-	} else if (rdbms == "mysql") {
-		tables, err = ddlparse.ParseMySQL(ddl)
-	} else if (rdbms == "sqlite3") {
-		tables, err = ddlparse.ParseSQLite(ddl)
-	} else {
-		tables, err = ddlparse.ParseSQLite(ddl)
-	}
-
 	if err != nil {
 		c.JSON(400, gin.H{"errors": []string{err.Error()}})
 		return
 	}
-	gen := generator.NewGenerator(tables, rdbms)
-	zip, err := gen.Generate()
+	gen, err := generator.NewGenerator(ddl, rdbms)
+	if err != nil {
+		c.JSON(400, gin.H{"errors":[]string{err.Error()}})
+		return
+	}
 
+	zip, err := gen.Generate()
 	if err != nil {
 		c.JSON(500, gin.H{"errors":[]string{"生成に失敗しました。"}})
 		return

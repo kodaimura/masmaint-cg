@@ -7,14 +7,14 @@
 </div>
 <hr>
 <div class="row">
-	<div class="col-4">
+	<div class="col-6">
 		<label>言語</label>
 		<select class="form-select" id="lang">
 			<option value="golang" selected>Go 1.22 (Gin)</option>
 		</select>
 	</div>
 	
-	<div class="col-4">
+	<div class="col-6">
 		<label>RDBMS</label>
 		<select class="form-select" id="rdbms">
 			<option value="postgresql" selected>PostgreSQL</option>
@@ -24,7 +24,7 @@
 	</div>
 </div>
 <div class="row mt-3">
-	<div class="col-8">
+	<div class="col-12">
         <label>DDLファイル （拡張子 .sql）</label>
 		<div class="input-group mb-1">
 			<input type="file" class="form-control" id="ddl" accept=".sql">
@@ -32,10 +32,10 @@
 	</div>
 </div>
 <div class="row">
-    <div class="col-8 text-end">
-        <button type="button" class="btn btn-primary" id="generate">生成</button>
+    <div class="col-12 text-end">
+        <button type="button" class="btn btn-primary" id="generate">自動生成</button>
     </div>
 </div>
-<div id="message" class="overflow-auto" style="max-height: 50vh;"></div>
+<div id="message" class="overflow-auto mt-3" style="max-height: 50vh;"></div>
 <script type="text/javascript" src="/js/index.js"></script>
 {{template "footer" .}}

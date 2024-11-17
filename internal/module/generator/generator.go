@@ -14,6 +14,7 @@ import (
 
 
 type generator struct {
+	ddl string
 	tables []ddlparse.Table
 	rdbms string
 	output string
@@ -23,12 +24,28 @@ type Generator interface {
 	Generate() (string, error)
 }
 
-func NewGenerator(tables []ddlparse.Table, rdbms string) Generator {
+func NewGenerator(ddl string, rdbms string) (Generator, error) {
+	var tables []ddlparse.Table
+	var err error
+	if (rdbms == "postgres") {
+		tables, err = ddlparse.ParsePostgreSQL(ddl)
+	} else if (rdbms == "mysql") {
+		tables, err = ddlparse.ParseMySQL(ddl)
+	} else if (rdbms == "sqlite3") {
+		tables, err = ddlparse.ParseSQLite(ddl)
+	} else {
+		tables, err = ddlparse.ParseSQLite(ddl)
+	}
+	if err != nil {
+		return &generator{}, err
+	}
+
 	return &generator{
-		tables: tables, 
+		ddl: ddl,
+		tables: tables,
 		rdbms: rdbms,
 		output: "./output",
-	}
+	}, nil
 }
 
 func (gen *generator) Generate() (string, error) {
