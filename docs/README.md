@@ -1,3 +1,2 @@
 # MASMAINT-CG 
-### マスタメンテナンス自動生成
-https://masmaint-cg.carkodr.com/
+DDLファイルからマスタメンテナンス画面を生成する
