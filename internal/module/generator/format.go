@@ -387,7 +387,6 @@ const FORMAT_ROUTER =
 `package server
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"masmaint/config"
 	"masmaint/internal/core/jwt"
@@ -429,9 +428,6 @@ const FORMAT_ROUTER_SETAPI =
 		c.ShouldBindJSON(&body)
 		name := body["username"]
 		pass := body["password"]
-		fmt.Println(name)
-
-		fmt.Println(pass)
 
 		cf := config.GetConfig()
 		if name == cf.AuthUser && pass == cf.AuthPass {
