@@ -802,8 +802,14 @@ func (gen *generator) generateRouterGoFile(path string) error {
 
 // router.go コード生成
 func (gen *generator) codeRouterGo() string {
+	s1 := ""
+	for _, table := range gen.tables {
+		s1 += fmt.Sprintf("\t\"masmaint/internal/module/%s\"\n", strings.ToLower(table.Name))
+	}
+	s1 = strings.TrimSuffix(s1, "\n")
 	return fmt.Sprintf(
 		FORMAT_ROUTER, 
+		s1,
 		gen.CodeRouterSetWebRouter(),
 		gen.CodeRouterSetApiRouter(),
 	)
