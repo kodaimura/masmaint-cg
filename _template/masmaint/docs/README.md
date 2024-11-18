@@ -12,7 +12,11 @@ DB_NAME="sqlite3のファイルのパス"
 cd path/to/masmaint
 make dev
 ```
-http://localhost:3000
+http://localhost:3000  
+
+ユーザ名　：user  
+パスワード：pass  
+（簡易ログインのためカスタム推奨 internal/server/router.go 参照）
 
 ## その他
 * Makefile 参照

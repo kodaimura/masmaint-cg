@@ -819,13 +819,15 @@ func (gen *generator) CodeRouterSetWebRouter() string {
 	s1 := ""
 	for _, table := range gen.tables {
 		tn := strings.ToLower(table.Name)
-		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tn, tn)
+		tnc := SnakeToCamel(tn)
+		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tnc, tn)
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
 	for _, table := range gen.tables {
 		tn := strings.ToLower(table.Name)
-		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.GetPage)\n", tn, tn)
+		tnc := SnakeToCamel(tn)
+		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.GetPage)\n", tn, tnc)
 	}
 	s2 = strings.TrimSuffix(s2, "\n")
 	return fmt.Sprintf(
@@ -838,16 +840,18 @@ func (gen *generator) CodeRouterSetApiRouter() string {
 	s1 := ""
 	for _, table := range gen.tables {
 		tn := strings.ToLower(table.Name)
-		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tn, tn)
+		tnc := SnakeToCamel(tn)
+		s1 += fmt.Sprintf("\t%sController := %s.NewController()\n", tnc, tn)
 	}
 	s1 = strings.TrimSuffix(s1, "\n")
 	s2 := ""
 	for _, table := range gen.tables {
 		tn := strings.ToLower(table.Name)
-		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.Get)\n", tn, tn)
-		s2 += fmt.Sprintf("\t\tauth.POST(\"/%s\", %sController.Post)\n", tn, tn)
-		s2 += fmt.Sprintf("\t\tauth.PUT(\"/%s\", %sController.Put)\n", tn, tn)
-		s2 += fmt.Sprintf("\t\tauth.DELETE(\"/%s\", %sController.Delete)\n\n", tn, tn)
+		tnc := SnakeToCamel(tn)
+		s2 += fmt.Sprintf("\t\tauth.GET(\"/%s\", %sController.Get)\n", tn, tnc)
+		s2 += fmt.Sprintf("\t\tauth.POST(\"/%s\", %sController.Post)\n", tn, tnc)
+		s2 += fmt.Sprintf("\t\tauth.PUT(\"/%s\", %sController.Put)\n", tn, tnc)
+		s2 += fmt.Sprintf("\t\tauth.DELETE(\"/%s\", %sController.Delete)\n\n", tn, tnc)
 	}
 	s2 = strings.TrimSuffix(s2, "\n\n")
 	return fmt.Sprintf(
