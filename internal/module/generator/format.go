@@ -393,8 +393,7 @@ import (
 	"masmaint/internal/core/jwt"
 	"masmaint/internal/middleware"
 
-	"masmaint/internal/module/employee"
-	"masmaint/internal/module/department"
+%s
 )
 
 /*
