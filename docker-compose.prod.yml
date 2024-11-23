@@ -6,7 +6,9 @@ services:
       - "3400:3400"
     volumes:
       - .:/usr/src/app
+      - ./linux/logrotate.d/app:/etc/logrotate.d/app
+      - ./linux/cron.d/app:/etc/cron.d/app
     working_dir: /usr/src/app
     tty: true
-    command: sh -c "go mod tidy && go build cmd/masmaint-cg/main.go && ./main"
+    command: sh -c "service cron start && go mod tidy && go build cmd/masmaint-cg/main.go && ./main"
     restart: always

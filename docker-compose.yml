@@ -6,8 +6,10 @@ services:
       - "3400:3400"
     volumes:
       - .:/usr/src/app
+      - ./linux/logrotate.d/app:/etc/logrotate.d/app
+      - ./linux/cron.d/app:/etc/cron.d/app
     working_dir: /usr/src/app
     tty: true
     environment:
       - ENV=local
-    command: sh -c "go mod tidy && go run cmd/masmaint-cg/main.go"
+    command: sh -c "service cron start && go mod tidy && go run cmd/masmaint-cg/main.go"
