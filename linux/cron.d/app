@@ -1,0 +1,1 @@
+0 3 * * * rm -rf /usr/src/app/output/*
