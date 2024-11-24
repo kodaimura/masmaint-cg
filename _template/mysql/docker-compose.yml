@@ -8,6 +8,7 @@ services:
       - db
     volumes:
       - .:/usr/src/app
+      - ./linux/logrotate.d/app:/etc/logrotate.d/app
     working_dir: /usr/src/app
     tty: true
     environment:

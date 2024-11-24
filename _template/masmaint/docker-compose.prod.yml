@@ -6,6 +6,7 @@ services:
       - "3000:3000"
     volumes:
       - .:/usr/src/app
+      - ./linux/logrotate.d/app:/etc/logrotate.d/app
     working_dir: /usr/src/app
     tty: true
     command: sh -c "go mod tidy && go build cmd/masmaint/main.go && ./main"
