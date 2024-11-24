@@ -1,10 +1,7 @@
-# ログローテーション設定テンプレート
-# Linux環境で /etc/logrotate.d に配置
-
-/path/to/log/app.log
+/usr/src/app/log/app.log
 {
-    monthly
-    rotate 12
+    daily
+    rotate 60
     copytruncate
     dateext
     ifempty

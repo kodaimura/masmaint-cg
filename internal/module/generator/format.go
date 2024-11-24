@@ -5,7 +5,7 @@ const FORMAT_CONTROLLER =
 
 import (
 	"github.com/gin-gonic/gin"
-	"masmaint/internal/core/errs"
+	"masmaint/internal/module"
 )
 
 type controller struct {
@@ -28,7 +28,7 @@ func (ctr *controller) GetPage(c *gin.Context) {
 func (ctr *controller) Get(c *gin.Context) {
 	ret, err := ctr.service.Get()
 	if err != nil {
-		c.Error(errs.NewServiceError(err))
+		c.Error(err)
 		return
 	}
 
@@ -40,13 +40,13 @@ func (ctr *controller) Get(c *gin.Context) {
 func (ctr *controller) Post(c *gin.Context) {
 	var req PostBody
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(errs.NewBindError(err, &req))
+		c.Error(module.NewBindError(err, &req))
 		return
 	}
 
 	ret, err := ctr.service.Create(req)
 	if err != nil {
-		c.Error(errs.NewServiceError(err))
+		c.Error(err)
 		return
 	}
 
@@ -58,13 +58,13 @@ func (ctr *controller) Post(c *gin.Context) {
 func (ctr *controller) Put(c *gin.Context) {
 	var req PutBody
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(errs.NewBindError(err, &req))
+		c.Error(module.NewBindError(err, &req))
 		return
 	}
 
 	ret, err := ctr.service.Update(req)
 	if err != nil {
-		c.Error(errs.NewServiceError(err))
+		c.Error(err)
 		return
 	}
 
@@ -76,12 +76,12 @@ func (ctr *controller) Put(c *gin.Context) {
 func (ctr *controller) Delete(c *gin.Context) {
 	var req DeleteBody
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.Error(errs.NewBindError(err, &req))
+		c.Error(module.NewBindError(err, &req))
 		return
 	}
 
 	if err := ctr.service.Delete(req); err != nil {
-		c.Error(errs.NewServiceError(err))
+		c.Error(err)
 		return
 	}
 
@@ -285,8 +285,10 @@ const FORMAT_SERVICE =
 `package %s
 
 import (
+	"masmaint/internal/module"
 	"masmaint/internal/core/logger"
 	"masmaint/internal/core/utils"
+	"masmaint/internal/core/errs"
 )
 
 type Service interface {
@@ -323,7 +325,7 @@ const FORMAT_SERVICE_GET =
 	rows, err := srv.repository.Get(&%s{})
 	if err != nil {
 		logger.Error(err.Error())
-		return []%s{}, err
+		return []%s{}, errs.NewUnexpectedError(err.Error())
 	}
 	return rows, nil
 }`
@@ -335,11 +337,19 @@ const FORMAT_SERVICE_CREATE =
 
 	err := srv.repository.Insert(&model, nil)
 	if err != nil {
+		if column, ok := module.GetConflictColumn(err); ok {
+			return %s{}, errs.NewConflictError(column)
+		}
 		logger.Error(err.Error())
-		return %s{}, err
+		return %s{}, errs.NewUnexpectedError(err.Error())
 	}
 
-	return srv.repository.GetOne(&%s{ %s })
+	row, err := srv.repository.GetOne(&%s{ %s })
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, errs.NewUnexpectedError(err.Error())
+	}
+	return row, nil
 }`
 
 const FORMAT_SERVICE_CREATE_AI =
@@ -349,11 +359,19 @@ const FORMAT_SERVICE_CREATE_AI =
 
 	%s, err := srv.repository.Insert(&model, nil)
 	if err != nil {
+		if column, ok := module.GetConflictColumn(err); ok {
+			return %s{}, errs.NewConflictError(column)
+		}
 		logger.Error(err.Error())
-		return %s{}, err
+		return %s{}, errs.NewUnexpectedError(err.Error())
 	}
 
-	return srv.repository.GetOne(&%s{ %s })
+	row, err := srv.repository.GetOne(&%s{ %s })
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, errs.NewUnexpectedError(err.Error())
+	}
+	return row, nil
 }`
 
 const FORMAT_SERVICE_UPDATE =
@@ -363,11 +381,19 @@ const FORMAT_SERVICE_UPDATE =
 
 	err := srv.repository.Update(&model, nil)
 	if err != nil {
+		if column, ok := module.GetConflictColumn(err); ok {
+			return %s{}, errs.NewConflictError(column)
+		}
 		logger.Error(err.Error())
-		return %s{}, err
+		return %s{}, errs.NewUnexpectedError(err.Error())
 	}
 
-	return srv.repository.GetOne(&%s{ %s })
+	row, err := srv.repository.GetOne(&%s{ %s })
+	if err != nil {
+		logger.Error(err.Error())
+		return %s{}, errs.NewUnexpectedError(err.Error())
+	}
+	return row, nil
 }`
 
 const FORMAT_SERVICE_DELETE =
@@ -378,7 +404,7 @@ const FORMAT_SERVICE_DELETE =
 	err := srv.repository.Delete(&model, nil)
 	if err != nil {
 		logger.Error(err.Error())
-		return err
+		return errs.NewUnexpectedError(err.Error())
 	}
 	return nil
 }`
@@ -409,7 +435,7 @@ const FORMAT_ROUTER_SETWEB =
 
 	r.GET("/login", func(c *gin.Context) { c.HTML(200, "login.html", gin.H{}) })
 
-	auth := r.Group("", middleware.JwtAuthMiddleware())
+	auth := r.Group("", middleware.JwtAuth())
 	{
 		auth.GET("/", func(c *gin.Context) { c.HTML(200, "index.html", gin.H{}) })
 %s
@@ -418,7 +444,7 @@ const FORMAT_ROUTER_SETWEB =
 
 const FORMAT_ROUTER_SETAPI =
 `func SetApiRouter(r *gin.RouterGroup) {
-	r.Use(middleware.ApiResponseMiddleware())
+	r.Use(middleware.ApiResponse())
 
 %s
 
@@ -438,7 +464,7 @@ const FORMAT_ROUTER_SETAPI =
 		}
 	})
 
-	auth := r.Group("", middleware.JwtAuthApiMiddleware())
+	auth := r.Group("", middleware.ApiJwtAuth())
 	{
 %s
 	}
