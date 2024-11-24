@@ -728,7 +728,7 @@ func (gen *generator)codeServiceCreateNomal(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_SERVICE_CREATE,
-		tnp, tnp, tnp, tnp, s1,
+		tnp, tnp, tnp, tnp, tnp, s1, tnp,
 	) 
 }
 
@@ -742,7 +742,7 @@ func (gen *generator)codeServiceCreateAI(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_SERVICE_CREATE_AI,
-		tnp, tnp, aicnc, tnp, tnp, fmt.Sprintf("%s: %s", fn, aicnc),
+		tnp, tnp, aicnc, tnp, tnp, tnp, fmt.Sprintf("%s: %s", fn, aicnc), tnp,
 	) 
 }
 
@@ -761,7 +761,7 @@ func (gen *generator)codeServiceUpdate(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_SERVICE_UPDATE,
-		tnp, tnp, tnp, tnp, s1,
+		tnp, tnp, tnp, tnp, tnp, s1, tnp,
 	) 
 }
 

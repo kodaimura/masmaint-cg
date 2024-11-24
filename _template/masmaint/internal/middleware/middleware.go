@@ -11,7 +11,7 @@ import (
 )
 
 
-func BasicAuthMiddleware() gin.HandlerFunc {
+func BasicAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cf := config.GetConfig()
 
@@ -26,10 +26,10 @@ func BasicAuthMiddleware() gin.HandlerFunc {
 }
 
 
-func JwtAuthMiddleware() gin.HandlerFunc {
+func JwtAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := jwt.Auth(c); err != nil {
-			c.Redirect(303, "/login")
+			c.Redirect(http.StatusSeeOther, "/login")
 			c.Abort()
 			return
 		}
@@ -38,10 +38,10 @@ func JwtAuthMiddleware() gin.HandlerFunc {
 }
 
 
-func JwtAuthApiMiddleware() gin.HandlerFunc {
+func ApiJwtAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if err := jwt.Auth(c); err != nil {
-			c.JSON(401, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
 		}
@@ -50,7 +50,7 @@ func JwtAuthApiMiddleware() gin.HandlerFunc {
 }
 
 
-func ApiResponseMiddleware() gin.HandlerFunc {
+func ApiResponse() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
 		if len(c.Errors) > 0 {
@@ -62,12 +62,22 @@ func ApiResponseMiddleware() gin.HandlerFunc {
 					"error": e.Error(), 
 					"details": gin.H{ "field": e.Field },
 				})
+			case errs.UnauthorizedError:
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": e.Error(),
+					"details": gin.H{},
+				})
+			case errs.ForbiddenError:
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": e.Error(),
+					"details": gin.H{},
+				})
 			case errs.NotFoundError:
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": e.Error(),
 					"details": gin.H{},
 				})
-			case errs.UniqueConstraintError:
+			case errs.ConflictError:
 				c.JSON(http.StatusConflict, gin.H{
 					"error": e.Error(),
 					"details": gin.H{ "column": e.Column },
