@@ -1050,7 +1050,7 @@ func (gen *generator) codeJsPutRows(table ddlparse.Table) string {
 
 	return fmt.Sprintf(
 		FORMAT_JS_PUTROWS, 
-		s1, s2, s3, s4, s5, s6, tn, s7,
+		s1, s2, s3, s4, s5, s6, tn, s7, tn,
 	)
 }
 
