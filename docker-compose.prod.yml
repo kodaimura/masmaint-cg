@@ -10,5 +10,5 @@ services:
       - ./linux/cron.d/app:/etc/cron.d/app
     working_dir: /usr/src/app
     tty: true
-    command: sh -c "service cron start && go mod tidy && go build cmd/masmaint-cg/main.go && ./main"
+    command: sh -c "service cron start && go build cmd/masmaint-cg/main.go && ./main"
     restart: always

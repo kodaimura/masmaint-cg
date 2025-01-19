@@ -12,4 +12,4 @@ services:
     tty: true
     environment:
       - ENV=local
-    command: sh -c "service cron start && go mod tidy && go run cmd/masmaint-cg/main.go"
+    command: sh -c "service cron start && go run cmd/masmaint-cg/main.go"
